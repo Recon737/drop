@@ -4,7 +4,7 @@
     :show="true"
     :style="{ 'z-index': props.zHeight }"
   >
-    <Dialog class="relative z-50" @close="emit('event', 'cancel')">
+    <Dialog class="relative z-50" @close="emit('event', 'close')">
       <TransitionChild
         as="template"
         enter="ease-out duration-300"
@@ -56,20 +56,12 @@
               >
                 <LoadingButton
                   :loading="props.loading"
-                  @click="emit('event', 'confirm')"
+                  @click="emit('event', 'close')"
                   type="submit"
                   class="w-full sm:w-fit"
                 >
                   {{ props.data.buttonText ?? "Confirm" }}
                 </LoadingButton>
-                <button
-                  type="button"
-                  class="mt-3 inline-flex w-full justify-center rounded-md bg-zinc-800 px-3 py-2 text-sm font-semibold text-zinc-100 shadow-sm ring-1 ring-inset ring-zinc-700 hover:bg-zinc-900 sm:mt-0 sm:w-auto"
-                  @click="emit('event', 'cancel')"
-                  ref="cancelButtonRef"
-                >
-                  Cancel
-                </button>
               </div>
             </div>
           </TransitionChild>
@@ -95,9 +87,9 @@ import type {
 const props = defineProps<{
   zHeight: number;
   loading: boolean;
-  data: ModalDatas[ModalType.Confirmation];
+  data: ModalDatas[ModalType.Notification];
 }>();
 const emit = defineEmits<{
-  (e: "event", v: ModalEvents[ModalType.Confirmation]): void;
+  (e: "event", v: ModalEvents[ModalType.Notification]): void;
 }>();
 </script>
