@@ -1,8 +1,5 @@
 <template>
-  <button
-    type="submit"
-    class="inline-flex h-9 items-center justify-center rounded-md px-3 py-1.5 text-sm font-semibold leading-6 shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 text-white bg-blue-600 hover:bg-blue-500 disabled:text-zinc-400 disabled:bg-blue-600/10 disabled:hover:bg-blue-600/10"
-  >
+  <button type="submit" :class="styles[style]">
     <div v-if="props.loading" role="status">
       <svg
         aria-hidden="true"
@@ -22,12 +19,22 @@
       </svg>
       <span class="sr-only">Loading...</span>
     </div>
-    <span v-else>
-      <slot />
-    </span>
+    <slot v-else />
   </button>
 </template>
 
 <script setup lang="ts">
-const props = defineProps<{ loading: boolean }>();
+type Style = "default" | "none";
+const props = defineProps<{
+  loading: boolean;
+  style?: Style;
+}>();
+
+const style = props.style ?? "default";
+
+const styles: { [key in Style]: string } = {
+  ["default"]:
+    "inline-flex min-h-9 items-center justify-center rounded-md px-3 py-1.5 text-sm font-semibold leading-6 shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 text-white bg-blue-600 hover:bg-blue-500 disabled:text-zinc-400 disabled:bg-blue-600/10 disabled:hover:bg-blue-600/10",
+  ["none"]: "",
+};
 </script>

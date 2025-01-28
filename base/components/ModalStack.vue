@@ -7,6 +7,7 @@
     :data="modal.data"
     @event="(event: string) => handleCallback(modalIdx, event)"
   />
+  <div id="modalstack" />
 </template>
 
 <script setup lang="ts">

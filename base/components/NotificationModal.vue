@@ -60,7 +60,7 @@
                   type="submit"
                   class="w-full sm:w-fit"
                 >
-                  {{ props.data.buttonText ?? "Confirm" }}
+                  {{ props.data.buttonText ?? "Close" }}
                 </LoadingButton>
               </div>
             </div>
