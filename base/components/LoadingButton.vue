@@ -1,5 +1,12 @@
 <template>
-  <button type="submit" :class="styles[style]">
+  <button
+    type="submit"
+    :class="[
+      styles[style].base,
+      props.disabled ? styles[style].disabled : styles[style].dft,
+    ]"
+    :disabled="props.disabled"
+  >
     <div v-if="props.loading" role="status">
       <svg
         aria-hidden="true"
@@ -28,13 +35,20 @@ type Style = "default" | "none";
 const props = defineProps<{
   loading: boolean;
   style?: Style;
+  disabled: boolean;
 }>();
 
 const style = props.style ?? "default";
 
-const styles: { [key in Style]: string } = {
-  ["default"]:
-    "inline-flex min-h-9 items-center justify-center rounded-md px-3 py-1.5 text-sm font-semibold leading-6 shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 text-white bg-blue-600 hover:bg-blue-500 disabled:text-zinc-400 disabled:bg-blue-600/10 disabled:hover:bg-blue-600/10",
-  ["none"]: "",
+const styles: {
+  [key in Style]: { base: string; dft: string; disabled: string };
+} = {
+  ["default"]: {
+    base: "inline-flex min-h-9 items-center justify-center rounded-md px-3 py-1.5 text-sm font-semibold leading-6 shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600",
+    dft: "text-white bg-blue-600 hover:bg-blue-500",
+    disabled:
+      "text-zinc-400 bg-blue-600/10 hover:bg-blue-600/10",
+  },
+  ["none"]: { base: "", dft: "", disabled: "" },
 };
 </script>
