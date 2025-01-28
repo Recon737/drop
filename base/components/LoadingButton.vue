@@ -35,7 +35,7 @@ type Style = "default" | "none";
 const props = defineProps<{
   loading: boolean;
   style?: Style;
-  disabled: boolean;
+  disabled?: boolean;
 }>();
 
 const style = props.style ?? "default";
