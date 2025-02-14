@@ -1,11 +1,15 @@
 <template>
   <button
     type="submit"
+<<<<<<< Updated upstream
     :class="[
       styles[style].base,
       props.disabled ? styles[style].disabled : styles[style].dft,
     ]"
     :disabled="props.disabled"
+=======
+    :class="['inline-flex h-9 items-center justify-center rounded-md px-3 py-1.5 text-sm font-semibold leading-6 shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 text-white bg-blue-600 hover:bg-blue-500 disabled:text-zinc-400 disabled:bg-blue-600/10 disabled:hover:bg-blue-600/10', props.class ?? '']"
+>>>>>>> Stashed changes
   >
     <div v-if="props.loading" role="status">
       <svg
@@ -31,6 +35,7 @@
 </template>
 
 <script setup lang="ts">
+<<<<<<< Updated upstream
 type Style = "default" | "none";
 const props = defineProps<{
   loading: boolean;
@@ -51,4 +56,7 @@ const styles: {
   },
   ["none"]: { base: "", dft: "", disabled: "" },
 };
+=======
+const props = defineProps<{ loading: boolean, class?: string }>();
+>>>>>>> Stashed changes
 </script>
