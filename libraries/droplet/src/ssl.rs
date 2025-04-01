@@ -1,7 +1,5 @@
-use napi::Error;
 use rcgen::{
-    CertificateParams, DistinguishedName, IsCa, KeyPair, KeyUsagePurpose, PublicKeyData,
-    SubjectPublicKeyInfo,
+    CertificateParams, DistinguishedName, Error, IsCa, KeyPair, KeyUsagePurpose, PublicKeyData, SubjectPublicKeyInfo
 };
 use ring::rand::SystemRandom;
 use ring::signature::{EcdsaKeyPair, VerificationAlgorithm};
@@ -9,7 +7,7 @@ use time::{Duration, OffsetDateTime};
 use x509_parser::parse_x509_certificate;
 use x509_parser::pem::Pem;
 
-pub fn generate_root_ca() -> Result<Vec<String>, Error> {
+pub fn generate_root_ca() -> Result<Vec<String>, rcgen::Error> {
     let mut params = CertificateParams::default();
 
     let mut name = DistinguishedName::new();
@@ -31,9 +29,8 @@ pub fn generate_root_ca() -> Result<Vec<String>, Error> {
         KeyUsagePurpose::DigitalSignature,
     ];
 
-    let key_pair = KeyPair::generate().map_err(|e| napi::Error::from_reason(e.to_string()))?;
-    let certificate = CertificateParams::self_signed(params, &key_pair)
-        .map_err(|e| napi::Error::from_reason(e.to_string()))?;
+    let key_pair = KeyPair::generate()?;
+    let certificate = CertificateParams::self_signed(params, &key_pair)?;
 
     // Returns certificate, then private key
     Ok(vec![certificate.pem(), key_pair.serialize_pem()])
@@ -44,13 +41,11 @@ pub fn generate_client_certificate(
     _client_name: String,
     root_ca: String,
     root_ca_private: String,
-) -> Result<Vec<String>, Error> {
+) -> Result<Vec<String>, rcgen::Error> {
     let root_key_pair =
-        KeyPair::from_pem(&root_ca_private).map_err(|e| napi::Error::from_reason(e.to_string()))?;
-    let certificate_params = CertificateParams::from_ca_cert_pem(&root_ca)
-        .map_err(|e| napi::Error::from_reason(e.to_string()))?;
-    let root_ca = CertificateParams::self_signed(certificate_params, &root_key_pair)
-        .map_err(|e| napi::Error::from_reason(e.to_string()))?;
+        KeyPair::from_pem(&root_ca_private)?;
+    let certificate_params = CertificateParams::from_ca_cert_pem(&root_ca)?;
+    let root_ca = CertificateParams::self_signed(certificate_params, &root_key_pair)?;
 
     let mut params = CertificateParams::default();
 
@@ -64,10 +59,8 @@ pub fn generate_client_certificate(
         KeyUsagePurpose::DataEncipherment,
     ];
 
-    let key_pair = KeyPair::generate_for(&rcgen::PKCS_ECDSA_P384_SHA384)
-        .map_err(|e| napi::Error::from_reason(e.to_string()))?;
-    let certificate = CertificateParams::signed_by(params, &key_pair, &root_ca, &root_key_pair)
-        .map_err(|e| napi::Error::from_reason(e.to_string()))?;
+    let key_pair = KeyPair::generate_for(&rcgen::PKCS_ECDSA_P384_SHA384)?;
+    let certificate = CertificateParams::signed_by(params, &key_pair, &root_ca, &root_key_pair)?;
 
     // Returns certificate, then private key
     Ok(vec![certificate.pem(), key_pair.serialize_pem()])

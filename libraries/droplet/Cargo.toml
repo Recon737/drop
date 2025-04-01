@@ -9,11 +9,6 @@ description = "Droplet is a `napi.rs` Rust/Node.js package full of high-performa
 crate-type = ["cdylib"]
 
 [dependencies]
-# Default enable napi4 feature, see https://nodejs.org/api/n-api.html#node-api-version-matrix
-napi = { version = "2.12.2", default-features = false, features = [
-    "napi4",
-    "async",
-] }
 hex = "0.4.3"
 time-macros = "0.2.22"
 time = "0.3.41"
@@ -27,9 +22,6 @@ features = ["verify"]
 [dependencies.rcgen]
 version = "0.13.2"
 features = ["crypto", "pem", "x509-parser"]
-
-[build-dependencies]
-napi-build = "2.0.1"
 
 [profile.release]
 lto = true
