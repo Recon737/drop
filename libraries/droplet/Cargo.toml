@@ -1,5 +1,6 @@
 [package]
 edition = "2024"
+authors = ["Drop-OSS"]
 name = "droplet-rs"
 version = "0.7.0"
 license = "AGPL-3.0-only"
