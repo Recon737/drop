@@ -1,5 +1,5 @@
 <template>
-  <TransitionRoot as="template" :show="!!open">
+  <TransitionRoot as="template" :show="open">
     <Dialog class="relative z-50" @close="open = false">
       <TransitionChild
         as="template"
@@ -55,7 +55,7 @@ import {
   TransitionRoot,
 } from "@headlessui/vue";
 
-const open = defineModel<boolean>();
+const open: Ref<boolean> = defineModel<boolean>() as any;
 const props = defineProps<{sizeClass?: string}>();
 
 function close() {
