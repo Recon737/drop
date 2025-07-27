@@ -1,14 +1,38 @@
 <template>
-  <component
-    v-for="(modal, modalIdx) in stack"
-    :is="modal.component"
-    :z-height="(modalIdx + 1) * 50"
-    :loading="modal.loading"
-    :data="modal.data"
-    @event="(event: string, ...args: any[]) => handleCallback(modalIdx, event, args)"
-  />
+  <TransitionGroup name="modal">
+    <component
+      v-for="(modal, modalIdx) in stack"
+      :key="modal.data"
+      :is="modal.component"
+      :z-height="(modalIdx + 1) * 50"
+      :loading="modal.loading"
+      :data="modal.data"
+      @event="
+        (event: string, ...args: any[]) => handleCallback(modalIdx, event, args)
+      "
+    />
+  </TransitionGroup>
   <div id="modalstack" />
 </template>
+
+<style>
+.modal-enter-active,
+.modal-leave-active {
+  transition: all 0.2s ease;
+}
+.modal-enter-from {
+  opacity: 0;
+}
+.modal-enter-to {
+  opacity: 100;
+}
+.modal-leave-from {
+  opacity: 100;
+}
+.modal-leave-to {
+  opacity: 0;
+}
+</style>
 
 <script setup lang="ts">
 const stack = useModalStack();
