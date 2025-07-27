@@ -1,10 +1,12 @@
 import type { Component } from "vue";
 import ConfirmationModal from "../components/ConfirmationModal.vue";
 import NotificationModal from "../components/NotificationModal.vue";
+import TextInputModal from "../components/TextInputModal.vue";
 
 export type ModalCallbackType<T extends ModalType> = (
   event: ModalEvents[T],
-  close: () => void
+  close: () => void,
+  ...args: any[]
 ) => Promise<void> | void;
 
 export interface ModalStackElement<T extends ModalType> {
@@ -18,11 +20,13 @@ export interface ModalStackElement<T extends ModalType> {
 export enum ModalType {
   Confirmation,
   Notification,
+  TextInput
 }
 
 export type ModalEvents = {
   [ModalType.Confirmation]: "confirm" | "cancel";
   [ModalType.Notification]: "close";
+  [ModalType.TextInput]: "cancel" | "submit"
 };
 
 export type ModalDatas = {
@@ -36,11 +40,19 @@ export type ModalDatas = {
     description: string;
     buttonText?: string;
   };
+  [ModalType.TextInput]: {
+    title: string,
+    description: string,
+    buttonText?: string,
+    dft?: string,
+    placeholder?: string,
+  }
 };
 
 const modalComponents: { [key in ModalType]: Component } = {
   [ModalType.Confirmation]: ConfirmationModal,
   [ModalType.Notification]: NotificationModal,
+  [ModalType.TextInput]: TextInputModal,
 };
 
 export function createModal<T extends ModalType>(

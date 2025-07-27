@@ -5,7 +5,7 @@
     :z-height="(modalIdx + 1) * 50"
     :loading="modal.loading"
     :data="modal.data"
-    @event="(event: string) => handleCallback(modalIdx, event)"
+    @event="(event: string, ...args: any[]) => handleCallback(modalIdx, event, args)"
   />
   <div id="modalstack" />
 </template>
@@ -13,7 +13,7 @@
 <script setup lang="ts">
 const stack = useModalStack();
 
-async function handleCallback(modalIdx: number, event: string) {
+async function handleCallback(modalIdx: number, event: string, args: any[]) {
   const modal = stack.value[modalIdx];
   console.log(modal);
   const close = () => {
@@ -24,7 +24,7 @@ async function handleCallback(modalIdx: number, event: string) {
   // I kinda hate this but it's how Vue works so....
   (modal.loading as unknown as boolean) = true;
   try {
-    await modal.callback(event, close);
+    await modal.callback(event, close, ...args);
   } finally {
     (modal.loading as unknown as boolean) = false;
   }
