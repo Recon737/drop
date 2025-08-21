@@ -93,7 +93,7 @@ impl Parse for TupleTryFrom {
 ///
 /// See examples:
 ///    - [Setup your data model](https://github.com/vincent-herlemont/native_model_private#setup-your-data-model).
-///    - other [examples](https://github.com/vincent-herlemont/native_model/tree/master/tests/example)
+///    - other [examples](https://github.com/Drop-OSS/native_model/tree/master/tests/example)
 #[proc_macro_attribute]
 pub fn native_model(args: TokenStream, input: TokenStream) -> TokenStream {
     let ast = parse_macro_input!(input as DeriveInput);
@@ -106,7 +106,6 @@ pub fn native_model(args: TokenStream, input: TokenStream) -> TokenStream {
     let native_model_id_fn = generate_native_model_id(&attrs);
     let native_model_version_fn = generate_native_model_version(&attrs);
     let native_model_encode_body_fn = generate_native_model_encode_body(&attrs);
-    let native_model_encode_downgrade_body_fn = generate_native_model_encode_downgrade_body(&attrs);
     let native_model_decode_body_fn = generate_native_model_decode_body(&attrs);
     let native_model_decode_upgrade_body_fn = generate_native_model_decode_upgrade_body(&attrs);
 
@@ -117,7 +116,6 @@ pub fn native_model(args: TokenStream, input: TokenStream) -> TokenStream {
             #native_model_id_fn
             #native_model_version_fn
             #native_model_encode_body_fn
-            #native_model_encode_downgrade_body_fn
             #native_model_decode_body_fn
             #native_model_decode_upgrade_body_fn
         }

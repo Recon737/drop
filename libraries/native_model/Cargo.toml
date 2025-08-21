@@ -1,11 +1,11 @@
 [package]
 name = "native_model"
 version = "0.6.2"
-authors = ["Vincent Herlemont <vincent@herlemont.fr>"]
+authors = ["Vincent Herlemont <vincent@herlemont.fr>", "quexeky <git@quexeky.dev>"]
 edition = "2021"
 description = "A thin wrapper around serialized data which add information of identity and version."
 license = "MIT"
-repository = "https://github.com/vincent-herlemont/native_model"
+repository = "https://github.com/Drop-OSS/native_model"
 readme = "README.md"
 keywords = ["serialization", "interoperability", "data-consistency", "flexibility", "performance"]
 categories = ["data-structures", "encoding", "rust-patterns"]

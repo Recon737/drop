@@ -5,7 +5,7 @@ authors = ["Vincent Herlemont <vincent@herlemont.fr>"]
 edition = "2018"
 description = "A procedural macro for native_model"
 license = "MIT"
-repository = "https://github.com/vincent-herlemont/native_model"
+repository = "https://github.com/Drop-OSS/native_model"
 readme = "README.md"
 
 

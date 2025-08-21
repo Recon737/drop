@@ -3,17 +3,17 @@
 //! - It aims to ensure:
 //!   - **Interoperability**: Different applications can work together even if they use different data model versions.
 //!   - **Data Consistency**: Ensures the data is processed as expected.
-//!   - **Flexibility**: Allows the use of any serialization format. Mode details [here](https://github.com/vincent-herlemont/native_model#setup-your-serialization-format).
-//!   - **Minimal Performance Overhead**: Current performance has a minimal overhead see [performance](https://github.com/vincent-herlemont/native_model#performance) section.
+//!   - **Flexibility**: Allows the use of any serialization format. Mode details [here](https://github.com/Drop-OSS/native_model#setup-your-serialization-format).
+//!   - **Minimal Performance Overhead**: Current performance has a minimal overhead see [performance](https://github.com/Drop-OSS/native_model#performance) section.
 //! - **Suitability**:
 //!   - Suitable for applications that are written in Rust, evolve independently, store data locally, and require incremental upgrades.
 //!   - Not suitable for non-Rust applications, systems not controlled by the user, or when human-readable formats are needed.
 //! - **Setup**:
-//!   - Users must define their own serialization format and data model. Mode details [here](https://github.com/vincent-herlemont/native_model#setup-your-serialization-format).
+//!   - Users must define their own serialization format and data model. Mode details [here](https://github.com/Drop-OSS/native_model#setup-your-serialization-format).
 //! - **Development Stage**:
 //!   - The crate is in early development, and performance is expected to improve over time.
 //!
-//! See examples in the [README.md](https://github.com/vincent-herlemont/native_model) file.
+//! See examples in the [README.md](https://github.com/Drop-OSS/native_model) file.
 
 #[cfg(doctest)]
 #[macro_use]
@@ -121,8 +121,8 @@ pub struct DowngradeError {
 /// Allows to encode a [`native_model`] into a [`Vec<u8>`].
 ///
 /// See examples:
-///    - [README.md](https://github.com/vincent-herlemont/native_model) file.
-///    - other [examples](https://github.com/vincent-herlemont/native_model/tree/master/tests/example)
+///    - [README.md](https://github.com/Drop-OSS/native_model) file.
+///    - other [examples](https://github.com/Drop-OSS/native_model/tree/master/tests/example)
 ///
 /// # Errors
 ///
@@ -132,18 +132,10 @@ pub fn encode<T: crate::Model>(model: &T) -> Result<Vec<u8>> {
     T::native_model_encode(model)
 }
 
-/// Allows to encode a [`native_model`] into a [`Vec<u8>`] with a specific version.
-/// See examples:
-///    - [README.md](https://github.com/vincent-herlemont/native_model) file.
-///    - other [examples](https://github.com/vincent-herlemont/native_model/tree/master/tests/example)
-pub fn encode_downgrade<T: crate::Model>(model: T, version: u32) -> Result<Vec<u8>> {
-    T::native_model_encode_downgrade(model, version)
-}
-
 /// Allows to decode a [`native_model`] from a [`Vec<u8>`] and returns the version ([`u32`]).
 /// See examples:
-///    - [README.md](https://github.com/vincent-herlemont/native_model) file.
-///    - other [examples](https://github.com/vincent-herlemont/native_model/tree/master/tests/example)
+///    - [README.md](https://github.com/Drop-OSS/native_model) file.
+///    - other [examples](https://github.com/Drop-OSS/native_model/tree/master/tests/example)
 ///
 /// # Errors
 ///
@@ -180,8 +172,6 @@ pub trait Model: Sized {
 
     fn native_model_encode_body(&self) -> EncodeResult<Vec<u8>>;
 
-    fn native_model_encode_downgrade_body(self, version: u32) -> Result<Vec<u8>>;
-
     fn native_model_encode(&self) -> Result<Vec<u8>> {
         let mut data = self.native_model_encode_body()?;
         let data = crate::native_model_encode(
@@ -189,12 +179,6 @@ pub trait Model: Sized {
             Self::native_model_id(),
             Self::native_model_version(),
         );
-        Ok(data)
-    }
-
-    fn native_model_encode_downgrade(self, version: u32) -> Result<Vec<u8>> {
-        let mut data = self.native_model_encode_downgrade_body(version)?;
-        let data = crate::native_model_encode(&mut data, Self::native_model_id(), version);
         Ok(data)
     }
 }
