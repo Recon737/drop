@@ -4,7 +4,7 @@ mod method;
 
 use crate::method::{
     generate_native_model_decode_body, generate_native_model_decode_upgrade_body,
-    generate_native_model_encode_body, generate_native_model_encode_downgrade_body,
+    generate_native_model_encode_body,
     generate_native_model_id, generate_native_model_version,
 };
 use proc_macro::TokenStream;
@@ -107,7 +107,8 @@ pub fn native_model(args: TokenStream, input: TokenStream) -> TokenStream {
     let native_model_version_fn = generate_native_model_version(&attrs);
     let native_model_encode_body_fn = generate_native_model_encode_body(&attrs);
     let native_model_decode_body_fn = generate_native_model_decode_body(&attrs);
-    let native_model_decode_upgrade_body_fn = generate_native_model_decode_upgrade_body(&attrs);
+    let native_model_decode_upgrade_body_fn = generate_native_model_decode_upgrade_body(&attrs, struct_name);
+
 
     let gen = quote! {
         #ast
