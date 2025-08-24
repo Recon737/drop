@@ -1,6 +1,6 @@
 [package]
 name = "native_model"
-version = "0.6.2"
+version = "0.6.3"
 authors = ["Vincent Herlemont <vincent@herlemont.fr>", "quexeky <git@quexeky.dev>"]
 edition = "2021"
 description = "A thin wrapper around serialized data which add information of identity and version."
