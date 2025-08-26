@@ -7,15 +7,17 @@ pub(crate) fn generate_native_model_decode_upgrade_body(attrs: &ModelAttributes,
     let native_model_from = attrs.from.clone();
     let native_model_try_from = attrs.try_from.clone();
 
+    let name = struct_name.to_string();
+
     let model_from_or_try_from = if let Some(from) = native_model_from {
         quote! {
-            log::info!("Upgrading database {} from version {} to version {}", #struct_name, #from::native_model_version(), Self::native_model_version());
+            ::log::info!("Upgrading database {} from version {} to version {}", #name, #from::native_model_version(), Self::native_model_version());
 
             #from::native_model_decode_upgrade_body(data, id, version).map(|a| a.into())
         }
     } else if let Some((try_from, error_try_from)) = native_model_try_from {
         quote! {
-            log::info!("Attempting to upgrade database {} from version {} to version {}", #struct_name, #try_from::native_model_version(), Self::native_model_version());
+            ::log::info!("Attempting to upgrade database {} from version {} to version {}", #name, #try_from::native_model_version(), Self::native_model_version());
             let result = #try_from::native_model_decode_upgrade_body(data, id, version).map(|b| {
                 b.try_into()
                     .map_err(|e: #error_try_from| native_model::UpgradeError {
