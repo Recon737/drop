@@ -12,7 +12,7 @@
       "
     />
   </TransitionGroup>
-  <div id="modalstack">{{ stack }}</div>
+  <div id="modalstack"></div>
 </template>
 
 <style>
