@@ -1,8 +1,8 @@
-import aclManager from "~/server/internal/acls";
-import prisma from "~/server/internal/db/database";
-import objectHandler from "~/server/internal/objects";
+import aclManager from "~~/server/internal/acls";
+import prisma from "~~/server/internal/db/database";
+import objectHandler from "~~/server/internal/objects";
 import { type } from "arktype";
-import { readDropValidatedBody, throwingArktype } from "~/server/arktype";
+import { readDropValidatedBody, throwingArktype } from "~~/server/arktype";
 
 const DeleteGameImage = type({
   gameId: "string",
@@ -32,20 +32,20 @@ export default defineEventHandler<{
   });
 
   if (!game)
-    throw createError({ statusCode: 400, statusMessage: "Invalid game ID" });
+    throw createError({ statusCode: 400, message: "Invalid game ID" });
 
   const imageIndex = game.mImageLibraryObjectIds.findIndex((e) => e == imageId);
   if (imageIndex == -1)
-    throw createError({ statusCode: 400, statusMessage: "Image not found" });
+    throw createError({ statusCode: 400, message: "Image not found" });
 
   game.mImageLibraryObjectIds.splice(imageIndex, 1);
   await objectHandler.deleteAsSystem(imageId);
 
   if (game.mBannerObjectId === imageId) {
-    game.mBannerObjectId = game.mImageLibraryObjectIds[0];
+    game.mBannerObjectId = game.mImageLibraryObjectIds[0] ?? "";
   }
   if (game.mCoverObjectId === imageId) {
-    game.mCoverObjectId = game.mImageLibraryObjectIds[0];
+    game.mCoverObjectId = game.mImageLibraryObjectIds[0] ?? "";
   }
 
   const result = await prisma.game.update({

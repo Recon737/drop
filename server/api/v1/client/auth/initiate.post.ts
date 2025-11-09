@@ -1,20 +1,20 @@
 import { type } from "arktype";
-import { readDropValidatedBody, throwingArktype } from "~/server/arktype";
+import type { ClientCapabilities } from "~~/prisma/client/enums";
+import { readDropValidatedBody, throwingArktype } from "~~/server/arktype";
 import type {
   CapabilityConfiguration,
-  InternalClientCapability,
-} from "~/server/internal/clients/capabilities";
+} from "~~/server/internal/clients/capabilities";
 import capabilityManager, {
   validCapabilities,
-} from "~/server/internal/clients/capabilities";
-import clientHandler, { AuthMode } from "~/server/internal/clients/handler";
-import { parsePlatform } from "~/server/internal/utils/parseplatform";
+} from "~~/server/internal/clients/capabilities";
+import clientHandler, { AuthModes } from "~~/server/internal/clients/handler";
+import { parsePlatform } from "~~/server/internal/utils/parseplatform";
 
 const ClientAuthInitiate = type({
   name: "string",
   platform: "string",
   capabilities: "object",
-  mode: type.valueOf(AuthMode).default(AuthMode.Callback),
+  mode: type.enumerated(...AuthModes).default("callback"),
 }).configure(throwingArktype);
 
 export default defineEventHandler(async (h3) => {
@@ -28,11 +28,11 @@ export default defineEventHandler(async (h3) => {
   if (!platform)
     throw createError({
       statusCode: 400,
-      statusMessage: "Invalid or unsupported platform",
+      message: "Invalid or unsupported platform",
     });
 
   const capabilityIterable = Object.entries(capabilities) as Array<
-    [InternalClientCapability, object]
+    [ClientCapabilities, object]
   >;
   if (
     capabilityIterable.length > 0 &&
@@ -42,7 +42,7 @@ export default defineEventHandler(async (h3) => {
   )
     throw createError({
       statusCode: 400,
-      statusMessage: "Invalid capabilities.",
+      message: "Invalid capabilities.",
     });
 
   if (
@@ -57,7 +57,7 @@ export default defineEventHandler(async (h3) => {
   )
     throw createError({
       statusCode: 400,
-      statusMessage: "Invalid capability configuration.",
+      message: "Invalid capability configuration.",
     });
 
   const result = await clientHandler.initiate({

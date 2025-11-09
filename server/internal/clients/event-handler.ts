@@ -1,8 +1,8 @@
-import type { ClientModel, UserModel } from "~/prisma/client/models";
+import type { ClientModel, UserModel } from "~~/prisma/client/models";
 import type { EventHandlerRequest, H3Event } from "h3";
 import droplet from "@drop-oss/droplet";
 import prisma from "../db/database";
-import { useCertificateAuthority } from "~/server/plugins/ca";
+import { useCertificateAuthority } from "~~/server/plugins/ca";
 
 export type EventHandlerFunction<T> = (
   h3: H3Event<EventHandlerRequest>,
@@ -23,7 +23,7 @@ export function defineClientEventHandler<T>(handler: EventHandlerFunction<T>) {
     if (!header) throw createError({ statusCode: 403 });
     const [method, ...parts] = header.split(" ");
 
-    let clientId: string;
+    let clientId: string | undefined;
     switch (method) {
       case "Debug": {
         if (!import.meta.dev) throw createError({ statusCode: 403 });
@@ -31,7 +31,7 @@ export function defineClientEventHandler<T>(handler: EventHandlerFunction<T>) {
         if (!client)
           throw createError({
             statusCode: 400,
-            statusMessage: "No clients created.",
+            message: "No clients created.",
           });
         clientId = client.id;
         break;
@@ -55,7 +55,7 @@ export function defineClientEventHandler<T>(handler: EventHandlerFunction<T>) {
           // We reject the request
           throw createError({
             statusCode: 403,
-            statusMessage: "Nonce expired",
+            message: "Nonce expired",
           });
         }
 
@@ -66,21 +66,21 @@ export function defineClientEventHandler<T>(handler: EventHandlerFunction<T>) {
         if (!certBundle)
           throw createError({
             statusCode: 403,
-            statusMessage: "Invalid client ID",
+            message: "Invalid client ID",
           });
 
         const valid = droplet.verifyNonce(certBundle.cert, nonce, signature);
         if (!valid)
           throw createError({
             statusCode: 403,
-            statusMessage: "Invalid nonce signature.",
+            message: "Invalid nonce signature.",
           });
         break;
       }
       default: {
         throw createError({
           statusCode: 403,
-          statusMessage: "No authentication",
+          message: "No authentication",
         });
       }
     }
@@ -88,12 +88,12 @@ export function defineClientEventHandler<T>(handler: EventHandlerFunction<T>) {
     if (clientId === undefined)
       throw createError({
         statusCode: 500,
-        statusMessage: "Failed to execute authentication pipeline.",
+        message: "Failed to execute authentication pipeline.",
       });
 
     async function fetchClient() {
       const client = await prisma.client.findUnique({
-        where: { id: clientId },
+        where: { id: clientId! },
       });
       if (!client)
         throw new Error(
@@ -104,7 +104,7 @@ export function defineClientEventHandler<T>(handler: EventHandlerFunction<T>) {
 
     async function fetchUser() {
       const client = await prisma.client.findUnique({
-        where: { id: clientId },
+        where: { id: clientId! },
         select: {
           user: true,
         },

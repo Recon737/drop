@@ -1,5 +1,5 @@
-import { defineClientEventHandler } from "~/server/internal/clients/event-handler";
-import userLibraryManager from "~/server/internal/userlibrary";
+import { defineClientEventHandler } from "~~/server/internal/clients/event-handler";
+import userLibraryManager from "~~/server/internal/userlibrary";
 
 export default defineClientEventHandler(async (h3, { fetchUser }) => {
   const user = await fetchUser();
@@ -8,7 +8,7 @@ export default defineClientEventHandler(async (h3, { fetchUser }) => {
   if (!id)
     throw createError({
       statusCode: 400,
-      statusMessage: "ID required in route params",
+      message: "ID required in route params",
     });
 
   // Verify collection exists and user owns it
@@ -17,13 +17,13 @@ export default defineClientEventHandler(async (h3, { fetchUser }) => {
   if (!collection)
     throw createError({
       statusCode: 404,
-      statusMessage: "Collection not found",
+      message: "Collection not found",
     });
 
   if (collection.userId !== user.id)
     throw createError({
       statusCode: 403,
-      statusMessage: "Not authorized to delete this collection",
+      message: "Not authorized to delete this collection",
     });
 
   await userLibraryManager.deleteCollection(id);

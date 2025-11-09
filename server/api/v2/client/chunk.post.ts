@@ -1,8 +1,8 @@
 import { type } from "arktype";
-import { readDropValidatedBody, throwingArktype } from "~/server/arktype";
-import contextManager from "~/server/internal/downloads/coordinator";
-import libraryManager from "~/server/internal/library";
-import { logger } from "~/server/internal/logging";
+import { readDropValidatedBody, throwingArktype } from "~~/server/arktype";
+import contextManager from "~~/server/internal/downloads/coordinator";
+import libraryManager from "~~/server/internal/library";
+import { logger } from "~~/server/internal/logging";
 
 const GetChunk = type({
   context: "string",
@@ -22,7 +22,7 @@ export default defineEventHandler(async (h3) => {
   if (!context)
     throw createError({
       statusCode: 400,
-      statusMessage: "Invalid download context.",
+      message: "Invalid download context.",
     });
 
   const streamFiles = [];
@@ -32,7 +32,7 @@ export default defineEventHandler(async (h3) => {
     if (!manifestFile)
       throw createError({
         statusCode: 400,
-        statusMessage: `Unknown file: ${file.filename}`,
+        message: `Unknown file: ${file.filename}`,
       });
 
     const start = manifestFile.lengths
@@ -84,7 +84,7 @@ export default defineEventHandler(async (h3) => {
       );
       throw createError({
         statusCode: 500,
-        statusMessage: "Failed to read enough from stream.",
+        message: "Failed to read enough from stream.",
       });
     }
   }

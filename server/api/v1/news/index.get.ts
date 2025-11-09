@@ -1,13 +1,13 @@
 import { defineEventHandler, getQuery } from "h3";
-import aclManager from "~/server/internal/acls";
-import newsManager from "~/server/internal/news";
+import aclManager from "~~/server/internal/acls";
+import newsManager from "~~/server/internal/news";
 
 export default defineEventHandler(async (h3) => {
   const userId = await aclManager.getUserIdACL(h3, ["news:read"]);
   if (!userId)
     throw createError({
       statusCode: 403,
-      statusMessage: "Requires authentication",
+      message: "Requires authentication",
     });
 
   const query = getQuery(h3);
@@ -15,13 +15,13 @@ export default defineEventHandler(async (h3) => {
   const orderBy = query.order as "asc" | "desc";
   if (orderBy) {
     if (typeof orderBy !== "string" || !["asc", "desc"].includes(orderBy))
-      throw createError({ statusCode: 400, statusMessage: "Invalid order" });
+      throw createError({ statusCode: 400, message: "Invalid order" });
   }
 
   const tags = query.tags as string[] | undefined;
   if (tags) {
     if (typeof tags !== "object" || !Array.isArray(tags))
-      throw createError({ statusCode: 400, statusMessage: "Invalid tags" });
+      throw createError({ statusCode: 400, message: "Invalid tags" });
   }
 
   const options = {

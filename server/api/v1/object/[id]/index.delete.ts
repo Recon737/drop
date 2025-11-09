@@ -1,11 +1,11 @@
-import aclManager from "~/server/internal/acls";
-import objectHandler from "~/server/internal/objects";
+import aclManager from "~~/server/internal/acls";
+import objectHandler from "~~/server/internal/objects";
 import sanitize from "sanitize-filename";
 
 export default defineEventHandler(async (h3) => {
   const unsafeId = getRouterParam(h3, "id");
   if (!unsafeId)
-    throw createError({ statusCode: 400, statusMessage: "Invalid ID" });
+    throw createError({ statusCode: 400, message: "Invalid ID" });
 
   const userId = await aclManager.getUserIdACL(h3, ["object:delete"]);
 

@@ -1,5 +1,5 @@
-import clientHandler from "~/server/internal/clients/handler";
-import sessionHandler from "~/server/internal/session";
+import clientHandler from "~~/server/internal/clients/handler";
+import sessionHandler from "~~/server/internal/session";
 
 export default defineEventHandler(async (h3) => {
   const user = await sessionHandler.getSession(h3);
@@ -12,13 +12,13 @@ export default defineEventHandler(async (h3) => {
   if (!client)
     throw createError({
       statusCode: 400,
-      statusMessage: "Invalid or expired client ID.",
+      message: "Invalid or expired client ID.",
     });
 
   if (client.userId != user.userId)
     throw createError({
       statusCode: 403,
-      statusMessage: "Not allowed to authorize this client.",
+      message: "Not allowed to authorize this client.",
     });
 
   const token = await clientHandler.generateAuthToken(clientId);

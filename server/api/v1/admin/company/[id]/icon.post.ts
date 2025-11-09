@@ -1,7 +1,7 @@
-import aclManager from "~/server/internal/acls";
-import prisma from "~/server/internal/db/database";
-import objectHandler from "~/server/internal/objects";
-import { handleFileUpload } from "~/server/internal/utils/handlefileupload";
+import aclManager from "~~/server/internal/acls";
+import prisma from "~~/server/internal/db/database";
+import objectHandler from "~~/server/internal/objects";
+import { handleFileUpload } from "~~/server/internal/utils/handlefileupload";
 
 export default defineEventHandler(async (h3) => {
   const allowed = await aclManager.allowSystemACL(h3, ["company:update"]);
@@ -15,13 +15,13 @@ export default defineEventHandler(async (h3) => {
   });
 
   if (!company)
-    throw createError({ statusCode: 400, statusMessage: "Invalid company id" });
+    throw createError({ statusCode: 400, message: "Invalid company id" });
 
   const result = await handleFileUpload(h3, {}, ["internal:read"], 1);
   if (!result)
     throw createError({
       statusCode: 400,
-      statusMessage: "File upload required (multipart form)",
+      message: "File upload required (multipart form)",
     });
 
   const [ids, , pull, dump] = result;
@@ -29,7 +29,7 @@ export default defineEventHandler(async (h3) => {
   if (!id)
     throw createError({
       statusCode: 400,
-      statusMessage: "Upload at least one file.",
+      message: "Upload at least one file.",
     });
 
   try {

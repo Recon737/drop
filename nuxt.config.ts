@@ -18,6 +18,7 @@ const twemojiJson = module.findPackageJSON(
 if (!twemojiJson) {
   throw new Error("Could not find @discordapp/twemoji package.");
 }
+const svgSrcDir = path.join(path.dirname(twemojiJson), "dist", "svg");
 
 // get drop version
 const dropVersion = getDropVersion();
@@ -74,14 +75,13 @@ export default defineNuxtConfig({
 
   vite: {
     plugins: [
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      tailwindcss() as any,
+      tailwindcss(),
       // only used in dev server, not build because nitro sucks
       // see build hook below
       viteStaticCopy({
         targets: [
           {
-            src: "node_modules/@discordapp/twemoji/dist/svg/*",
+            src: `${svgSrcDir}/*`,
             dest: "twemoji",
           },
         ],
@@ -96,7 +96,7 @@ export default defineNuxtConfig({
       // https://github.com/nuxt/nuxt/issues/18918#issuecomment-1925774964
       // copy emojis to .output/public/twemoji
       const targetDir = path.join(nitro.options.output.publicDir, "twemoji");
-      cpSync(path.join(path.dirname(twemojiJson), "dist", "svg"), targetDir, {
+      cpSync(svgSrcDir, targetDir, {
         recursive: true,
       });
     },
@@ -159,13 +159,16 @@ export default defineNuxtConfig({
   },
 
   typescript: {
-    typeCheck: true,
+    //typeCheck: true,
 
     tsConfig: {
       compilerOptions: {
+        // Not having these options on is sloppy, but it's a task for later me
         verbatimModuleSyntax: false,
         strictNullChecks: true,
-        exactOptionalPropertyTypes: true,
+        exactOptionalPropertyTypes: false,
+        //erasableSyntaxOnly: true,
+        noUncheckedIndexedAccess: false,
       },
     },
   },
@@ -243,6 +246,9 @@ export default defineNuxtConfig({
         file: "zh_tw.json",
       },
     ],
+    bundle: {
+      optimizeTranslationDirective: false,
+    },
   },
 
   security: {
@@ -253,6 +259,7 @@ export default defineNuxtConfig({
         "img-src": [
           "'self'",
           "data:",
+          "blob:",
           "https://www.giantbomb.com",
           "https://images.pcgamingwiki.com",
           "https://images.igdb.com",

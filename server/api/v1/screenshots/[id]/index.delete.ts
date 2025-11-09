@@ -1,6 +1,6 @@
 // get a specific screenshot
-import aclManager from "~/server/internal/acls";
-import screenshotManager from "~/server/internal/screenshots";
+import aclManager from "~~/server/internal/acls";
+import screenshotManager from "~~/server/internal/screenshots";
 import sanitize from "sanitize-filename";
 
 export default defineEventHandler(async (h3) => {
@@ -11,7 +11,7 @@ export default defineEventHandler(async (h3) => {
   if (!unsafeId)
     throw createError({
       statusCode: 400,
-      statusMessage: "Missing screenshot ID",
+      message: "Missing screenshot ID",
     });
 
   const screenshotId = sanitize(unsafeId);

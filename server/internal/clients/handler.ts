@@ -1,23 +1,20 @@
 import { randomUUID } from "node:crypto";
 import prisma from "../db/database";
-import type { Platform } from "~/prisma/client/enums";
-import { useCertificateAuthority } from "~/server/plugins/ca";
+import type { ClientCapabilities, HardwarePlatform } from "~~/prisma/client/enums";
+import { useCertificateAuthority } from "~~/server/plugins/ca";
 import type {
   CapabilityConfiguration,
-  InternalClientCapability,
 } from "./capabilities";
 import capabilityManager from "./capabilities";
 import type { PeerImpl } from "../tasks";
-import userStatsManager from "~/server/internal/userstats";
+import userStatsManager from "~~/server/internal/userstats";
 
-export enum AuthMode {
-  Callback = "callback",
-  Code = "code",
-}
+export const AuthModes = ["callback", "code"] as const;
+export type AuthMode = (typeof AuthModes)[number];
 
 export interface ClientMetadata {
   name: string;
-  platform: Platform;
+  platform: HardwarePlatform;
   capabilities: Partial<CapabilityConfiguration>;
   mode: AuthMode;
 }
@@ -63,9 +60,9 @@ export class ClientHandler {
     });
 
     switch (metadata.mode) {
-      case AuthMode.Callback:
+      case "callback":
         return `/client/authorize/${clientId}`;
-      case AuthMode.Code: {
+      case "code": {
         const code = randomUUID()
           .replaceAll(/-/g, "")
           .slice(0, 7)
@@ -81,15 +78,15 @@ export class ClientHandler {
     if (!clientId)
       throw createError({
         statusCode: 403,
-        statusMessage: "Invalid or unknown code.",
+        message: "Invalid or unknown code.",
       });
     const metadata = this.temporaryClientTable.get(clientId);
     if (!metadata)
-      throw createError({ statusCode: 500, statusMessage: "Broken code." });
+      throw createError({ statusCode: 500, message: "Broken code." });
     if (metadata.peer)
       throw createError({
         statusCode: 400,
-        statusMessage: "Pre-existing listener for this code.",
+        message: "Pre-existing listener for this code.",
       });
     metadata.peer = peer;
     this.temporaryClientTable.set(clientId, metadata);
@@ -130,12 +127,12 @@ export class ClientHandler {
     if (!client)
       throw createError({
         statusCode: 500,
-        statusMessage: "Corrupted code, please restart the process.",
+        message: "Corrupted code, please restart the process.",
       });
     if (!client.peer)
       throw createError({
         statusCode: 400,
-        statusMessage: "Client has not connected yet. Please try again later.",
+        message: "Client has not connected yet. Please try again later.",
       });
     client.peer.send(
       JSON.stringify({ type: "token", value: `${clientId}/${token}` }),
@@ -173,7 +170,7 @@ export class ClientHandler {
       metadata.data.capabilities,
     )) {
       await capabilityManager.upsertClientCapability(
-        capability as InternalClientCapability,
+        capability as ClientCapabilities,
         configuration,
         client.id,
       );

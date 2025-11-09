@@ -1,12 +1,11 @@
 import { type } from "arktype";
-import { readDropValidatedBody, throwingArktype } from "~/server/arktype";
-import aclManager from "~/server/internal/acls";
-import taskHandler from "~/server/internal/tasks";
-import type { TaskGroup } from "~/server/internal/tasks/group";
-import { taskGroups } from "~/server/internal/tasks/group";
+import { readDropValidatedBody, throwingArktype } from "~~/server/arktype";
+import aclManager from "~~/server/internal/acls";
+import taskHandler from "~~/server/internal/tasks";
+import { TASK_GROUPS } from "~~/server/internal/tasks/group";
 
 const StartTask = type({
-  taskGroup: type("string"),
+  taskGroup: type.enumerated(...TASK_GROUPS),
 }).configure(throwingArktype);
 
 export default defineEventHandler(async (h3) => {
@@ -14,18 +13,12 @@ export default defineEventHandler(async (h3) => {
   if (!allowed) throw createError({ statusCode: 403 });
 
   const body = await readDropValidatedBody(h3, StartTask);
-  const taskGroup = body.taskGroup as TaskGroup;
-  if (!taskGroups[taskGroup])
-    throw createError({
-      statusCode: 400,
-      statusMessage: "Invalid task group.",
-    });
 
-  const task = await taskHandler.runTaskGroupByName(taskGroup);
+  const task = await taskHandler.runTaskGroupByName(body.taskGroup);
   if (!task)
     throw createError({
       statusCode: 500,
-      statusMessage: "Could not start task.",
+      message: "Could not start task.",
     });
   return { id: task };
 });

@@ -1,5 +1,5 @@
-import { defineClientEventHandler } from "~/server/internal/clients/event-handler";
-import userLibraryManager from "~/server/internal/userlibrary";
+import { defineClientEventHandler } from "~~/server/internal/clients/event-handler";
+import userLibraryManager from "~~/server/internal/userlibrary";
 
 export default defineClientEventHandler(async (h3, { fetchUser }) => {
   const user = await fetchUser();
@@ -8,7 +8,7 @@ export default defineClientEventHandler(async (h3, { fetchUser }) => {
 
   const name = body.name;
   if (!name)
-    throw createError({ statusCode: 400, statusMessage: "Requires name" });
+    throw createError({ statusCode: 400, message: "Requires name" });
 
   // Create the collection using the manager
   const newCollection = await userLibraryManager.collectionCreate(

@@ -1,7 +1,7 @@
 import { type } from "arktype";
-import { readDropValidatedBody, throwingArktype } from "~/server/arktype";
-import { defineClientEventHandler } from "~/server/internal/clients/event-handler";
-import contextManager from "~/server/internal/downloads/coordinator";
+import { readDropValidatedBody, throwingArktype } from "~~/server/arktype";
+import { defineClientEventHandler } from "~~/server/internal/clients/event-handler";
+import contextManager from "~~/server/internal/downloads/coordinator";
 
 const CreateContext = type({
   game: "string",
@@ -15,7 +15,7 @@ export default defineClientEventHandler(async (h3) => {
   if (!context)
     throw createError({
       statusCode: 400,
-      statusMessage: "Invalid game or version",
+      message: "Invalid game or version",
     });
 
   return { context };

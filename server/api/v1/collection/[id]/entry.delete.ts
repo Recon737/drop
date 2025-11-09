@@ -1,5 +1,5 @@
-import aclManager from "~/server/internal/acls";
-import userLibraryManager from "~/server/internal/userlibrary";
+import aclManager from "~~/server/internal/acls";
+import userLibraryManager from "~~/server/internal/userlibrary";
 
 export default defineEventHandler(async (h3) => {
   const userId = await aclManager.getUserIdACL(h3, ["collections:remove"]);
@@ -12,13 +12,13 @@ export default defineEventHandler(async (h3) => {
   if (!id)
     throw createError({
       statusCode: 400,
-      statusMessage: "ID required in route params",
+      message: "ID required in route params",
     });
 
   const body = await readBody(h3);
   const gameId = body.id;
   if (!gameId)
-    throw createError({ statusCode: 400, statusMessage: "Game ID required" });
+    throw createError({ statusCode: 400, message: "Game ID required" });
 
   const successful = await userLibraryManager.collectionRemove(
     gameId,
@@ -28,7 +28,7 @@ export default defineEventHandler(async (h3) => {
   if (!successful)
     throw createError({
       statusCode: 404,
-      statusMessage: "Collection not found",
+      message: "Collection not found",
     });
   return {};
 });

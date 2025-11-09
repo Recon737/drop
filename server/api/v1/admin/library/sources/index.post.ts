@@ -1,12 +1,12 @@
 import { type } from "arktype";
 import { randomUUID } from "crypto";
-import { LibraryBackend } from "~/prisma/client/enums";
-import { readDropValidatedBody, throwingArktype } from "~/server/arktype";
-import aclManager from "~/server/internal/acls";
-import prisma from "~/server/internal/db/database";
-import libraryManager from "~/server/internal/library";
-import { libraryConstructors } from "~/server/plugins/05.library-init";
-import type { WorkingLibrarySource } from "~/server/api/v1/admin/library/sources/index.get";
+import { LibraryBackend } from "~~/prisma/client/enums";
+import { readDropValidatedBody, throwingArktype } from "~~/server/arktype";
+import aclManager from "~~/server/internal/acls";
+import prisma from "~~/server/internal/db/database";
+import libraryManager from "~~/server/internal/library";
+import { libraryConstructors } from "~~/server/plugins/05.library-init";
+import type { WorkingLibrarySource } from "~~/server/api/v1/admin/library/sources/index.get";
 
 const CreateLibrarySource = type({
   name: "string",
@@ -29,7 +29,7 @@ export default defineEventHandler<{ body: typeof CreateLibrarySource.infer }>(
     if (!backend)
       throw createError({
         statusCode: 400,
-        statusMessage: "Invalid source backend.",
+        message: "Invalid source backend.",
       });
 
     const constructor = libraryConstructors[backend];
@@ -64,7 +64,7 @@ export default defineEventHandler<{ body: typeof CreateLibrarySource.infer }>(
     } catch (e) {
       throw createError({
         statusCode: 400,
-        statusMessage: `Failed to create source: ${e}`,
+        message: `Failed to create source: ${e}`,
       });
     }
   },

@@ -1,7 +1,6 @@
-import type { GameVersion } from "~/prisma/client/client";
-import aclManager from "~/server/internal/acls";
-import prisma from "~/server/internal/db/database";
-import libraryManager from "~/server/internal/library";
+import aclManager from "~~/server/internal/acls";
+import prisma from "~~/server/internal/db/database";
+import libraryManager from "~~/server/internal/library";
 
 export default defineEventHandler(async (h3) => {
   const allowed = await aclManager.allowSystemACL(h3, ["game:read"]);
@@ -15,11 +14,17 @@ export default defineEventHandler(async (h3) => {
     },
     include: {
       versions: {
-        orderBy: {
-          versionIndex: "asc",
-        },
         omit: {
           dropletManifest: true,
+        },
+        include: {
+          gameVersions: {
+            include: {
+              install: true,
+              uninstall: true,
+              launches: true,
+            },
+          },
         },
       },
       tags: true,
@@ -27,12 +32,14 @@ export default defineEventHandler(async (h3) => {
   });
 
   if (!game || !game.libraryId)
-    throw createError({ statusCode: 404, statusMessage: "Game ID not found" });
+    throw createError({ statusCode: 404, message: "Game ID not found" });
 
-  const getGameVersionSize = async (version: GameVersion) => {
+  const getGameVersionSize = async (
+    version: Omit<(typeof game)["versions"][number], "dropletManifest">,
+  ) => {
     const size = await libraryManager.getGameVersionSize(
       gameId,
-      version.versionName,
+      version.versionId,
     );
     return { ...version, size };
   };

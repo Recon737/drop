@@ -1,5 +1,5 @@
-import aclManager from "~/server/internal/acls";
-import libraryManager from "~/server/internal/library";
+import aclManager from "~~/server/internal/acls";
+import libraryManager from "~~/server/internal/library";
 
 export default defineEventHandler(async (h3) => {
   const allowed = await aclManager.allowSystemACL(h3, ["game:delete"]);
@@ -7,7 +7,7 @@ export default defineEventHandler(async (h3) => {
 
   const gameId = getRouterParam(h3, "id")!;
 
-  libraryManager.deleteGame(gameId);
+  await libraryManager.deleteGame(gameId);
 
   return {};
 });

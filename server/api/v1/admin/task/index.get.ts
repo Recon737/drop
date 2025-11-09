@@ -1,7 +1,7 @@
-import aclManager from "~/server/internal/acls";
-import prisma from "~/server/internal/db/database";
-import type { TaskMessage } from "~/server/internal/tasks";
-import taskHandler from "~/server/internal/tasks";
+import aclManager from "~~/server/internal/acls";
+import prisma from "~~/server/internal/db/database";
+import type { TaskMessage } from "~~/server/internal/tasks";
+import taskHandler from "~~/server/internal/tasks";
 
 export default defineEventHandler(async (h3) => {
   const allowed = await aclManager.allowSystemACL(h3, ["task:read"]);
@@ -10,7 +10,7 @@ export default defineEventHandler(async (h3) => {
   if (!allAcls)
     throw createError({
       statusCode: 403,
-      statusMessage: "Somehow no ACLs on authenticated request.",
+      message: "Somehow no ACLs on authenticated request.",
     });
 
   const runningTasks = (await taskHandler.runningTasks()).map((e) => e.id);

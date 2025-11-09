@@ -1,88 +1,71 @@
 import { type } from "arktype";
-import { readDropValidatedBody, throwingArktype } from "~/server/arktype";
-import aclManager from "~/server/internal/acls";
-import prisma from "~/server/internal/db/database";
-import libraryManager from "~/server/internal/library";
-import { parsePlatform } from "~/server/internal/utils/parseplatform";
+import { readDropValidatedBody, throwingArktype } from "~~/server/arktype";
+import aclManager from "~~/server/internal/acls";
+import libraryManager from "~~/server/internal/library";
 
-const ImportVersion = type({
+export const LaunchCommands = type({
+  name: "string > 0",
+  description: "string = ''",
+  launchCommand: "string > 0",
+  launchArgs: "string = ''",
+}).array();
+
+const ImportVersionBase = type({
   id: "string",
   version: "string",
+  name: "string?",
 
   platform: "string",
-  launch: "string = ''",
-  launchArgs: "string = ''",
-  setup: "string = ''",
-  setupArgs: "string = ''",
-  onlySetup: "boolean = false",
   delta: "boolean = false",
+});
+
+const ImportGameVersion = type({
+  mode: "'game'",
+  onlySetup: "boolean = false",
   umuId: "string = ''",
-}).configure(throwingArktype);
+
+  install: "string?",
+  installArgs: "string?",
+  launches: LaunchCommands,
+  uninstall: "string?",
+  uninstallArgs: "string?",
+});
+
+const ImportRedistVersion = type({
+  mode: "'redist'",
+  install: "string?",
+  installArgs: "string?",
+  launches: LaunchCommands,
+  uninstall: "string?",
+  uninstallArgs: "string?",
+});
+
+export const ImportVersion = ImportVersionBase.and(
+  ImportGameVersion.or(ImportRedistVersion),
+).configure(throwingArktype);
+
+export type ImportGameVersion = typeof ImportVersionBase.infer &
+  typeof ImportGameVersion.infer;
+
+export type ImportRedistVersion = typeof ImportVersionBase.infer &
+  typeof ImportRedistVersion.infer;
 
 export default defineEventHandler(async (h3) => {
   const allowed = await aclManager.allowSystemACL(h3, ["import:version:new"]);
   if (!allowed) throw createError({ statusCode: 403 });
 
-  const {
-    id,
-    version,
-    platform,
-    launch,
-    launchArgs,
-    setup,
-    setupArgs,
-    onlySetup,
-    delta,
-    umuId,
-  } = await readDropValidatedBody(h3, ImportVersion);
-
-  const platformParsed = parsePlatform(platform);
-  if (!platformParsed)
-    throw createError({ statusCode: 400, statusMessage: "Invalid platform." });
-
-  if (delta) {
-    const validOverlayVersions = await prisma.gameVersion.count({
-      where: { gameId: id, platform: platformParsed, delta: false },
-    });
-    if (validOverlayVersions == 0)
-      throw createError({
-        statusCode: 400,
-        statusMessage:
-          "Update mode requires a pre-existing version for this platform.",
-      });
-  }
-
-  if (onlySetup) {
-    if (!setup)
-      throw createError({
-        statusCode: 400,
-        statusMessage: 'Setup required in "setup mode".',
-      });
-  } else {
-    if (!delta && !launch)
-      throw createError({
-        statusCode: 400,
-        statusMessage: "Launch executable is required for non-update versions",
-      });
-  }
+  const body = await readDropValidatedBody(h3, ImportVersion);
 
   // startup & delta require more complex checking logic
-  const taskId = await libraryManager.importVersion(id, version, {
-    platform,
-    onlySetup,
-
-    launch,
-    launchArgs,
-    setup,
-    setupArgs,
-
-    umuId,
-    delta,
-  });
+  const taskId = await libraryManager.importVersion(
+    body.id,
+    body.version,
+    body,
+  );
   if (!taskId)
     throw createError({
       statusCode: 400,
-      statusMessage: "Invalid options for import",
+      message: "Invalid options for import",
     });
 
   return { taskId: taskId };

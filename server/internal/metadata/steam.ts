@@ -1,4 +1,4 @@
-import { MetadataSource } from "~/prisma/client/enums";
+import { MetadataSource } from "~~/prisma/client/enums";
 import type { MetadataProvider } from ".";
 import type {
   GameMetadataSearchResult,
@@ -8,9 +8,9 @@ import type {
   CompanyMetadata,
   GameMetadataRating,
 } from "./types";
-import type { TaskRunContext } from "../tasks";
 import axios from "axios";
 import * as jdenticon from "jdenticon";
+import type { TaskRunContext } from "../tasks/utils";
 
 /**
  * Note: The Steam API is largely undocumented.

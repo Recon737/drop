@@ -1,5 +1,5 @@
-import aclManager from "~/server/internal/acls";
-import prisma from "~/server/internal/db/database";
+import aclManager from "~~/server/internal/acls";
+import prisma from "~~/server/internal/db/database";
 
 export default defineEventHandler(async (h3) => {
   const userId = await aclManager.getUserIdACL(h3, ["store:read"]);
@@ -9,7 +9,7 @@ export default defineEventHandler(async (h3) => {
   if (!tagId)
     throw createError({
       statusCode: 400,
-      statusMessage: "Missing gameId in route params (somehow...?)",
+      message: "Missing gameId in route params (somehow...?)",
     });
 
   const tag = await prisma.gameTag.findUnique({
@@ -17,7 +17,7 @@ export default defineEventHandler(async (h3) => {
   });
 
   if (!tag)
-    throw createError({ statusCode: 404, statusMessage: "Tag not found" });
+    throw createError({ statusCode: 404, message: "Tag not found" });
 
   return { tag };
 });

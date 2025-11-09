@@ -1,5 +1,5 @@
-import clientHandler from "~/server/internal/clients/handler";
-import sessionHandler from "~/server/internal/session";
+import clientHandler from "~~/server/internal/clients/handler";
+import sessionHandler from "~~/server/internal/session";
 
 export default defineEventHandler(async (h3) => {
   const user = await sessionHandler.getSession(h3);
@@ -10,12 +10,12 @@ export default defineEventHandler(async (h3) => {
   if (!code)
     throw createError({
       statusCode: 400,
-      statusMessage: "Code required in query params.",
+      message: "Code required in query params.",
     });
 
   const clientId = await clientHandler.fetchClientIdByCode(code);
   if (!clientId)
-    throw createError({ statusCode: 400, statusMessage: "Invalid code." });
+    throw createError({ statusCode: 400, message: "Invalid code." });
 
   return clientId;
 });

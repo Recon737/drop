@@ -4,11 +4,11 @@ import {
   VersionNotFoundError,
   type LibraryProvider,
 } from "../provider";
-import { LibraryBackend } from "~/prisma/client/enums";
+import { LibraryBackend } from "~~/prisma/client/enums";
 import fs from "fs";
 import path from "path";
 import droplet, { DropletHandler } from "@drop-oss/droplet";
-import { fsStats } from "~/server/internal/utils/files";
+import { fsStats } from "~~/server/internal/utils/files";
 
 export const FilesystemProviderConfig = type({
   baseDir: "string",

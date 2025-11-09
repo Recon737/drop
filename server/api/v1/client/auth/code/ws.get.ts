@@ -1,5 +1,5 @@
 import type { FetchError } from "ofetch";
-import clientHandler from "~/server/internal/clients/handler";
+import clientHandler from "~~/server/internal/clients/handler";
 
 export default defineWebSocketHandler({
   async open(peer) {
@@ -9,14 +9,14 @@ export default defineWebSocketHandler({
       if (!code)
         throw createError({
           statusCode: 400,
-          statusMessage: "Code required in Authorization header.",
+          message: "Code required in Authorization header.",
         });
       await clientHandler.connectCodeListener(code, peer);
     } catch (e) {
       peer.send(
         JSON.stringify({
           type: "error",
-          value: (e as FetchError)?.statusMessage,
+          value: (e as FetchError)?.message,
         }),
       );
       peer.close();

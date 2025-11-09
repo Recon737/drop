@@ -1,13 +1,13 @@
 import { defineEventHandler, createError } from "h3";
-import aclManager from "~/server/internal/acls";
-import newsManager from "~/server/internal/news";
+import aclManager from "~~/server/internal/acls";
+import newsManager from "~~/server/internal/news";
 
 export default defineEventHandler(async (h3) => {
   const userId = await aclManager.getUserIdACL(h3, ["news:read"]);
   if (!userId)
     throw createError({
       statusCode: 403,
-      statusMessage: "Requires authentication",
+      message: "Requires authentication",
     });
 
   const id = h3.context.params?.id;

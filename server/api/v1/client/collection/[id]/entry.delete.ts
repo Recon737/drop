@@ -1,5 +1,5 @@
-import { defineClientEventHandler } from "~/server/internal/clients/event-handler";
-import userLibraryManager from "~/server/internal/userlibrary";
+import { defineClientEventHandler } from "~~/server/internal/clients/event-handler";
+import userLibraryManager from "~~/server/internal/userlibrary";
 
 export default defineClientEventHandler(async (h3, { fetchUser }) => {
   const user = await fetchUser();
@@ -8,13 +8,13 @@ export default defineClientEventHandler(async (h3, { fetchUser }) => {
   if (!id)
     throw createError({
       statusCode: 400,
-      statusMessage: "ID required in route params",
+      message: "ID required in route params",
     });
 
   const body = await readBody(h3);
   const gameId = body.id;
   if (!gameId)
-    throw createError({ statusCode: 400, statusMessage: "Game ID required" });
+    throw createError({ statusCode: 400, message: "Game ID required" });
 
   const successful = await userLibraryManager.collectionRemove(
     gameId,
@@ -24,7 +24,7 @@ export default defineClientEventHandler(async (h3, { fetchUser }) => {
   if (!successful)
     throw createError({
       statusCode: 404,
-      statusMessage: "Collection not found",
+      message: "Collection not found",
     });
   return {};
 });

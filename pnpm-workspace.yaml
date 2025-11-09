@@ -1,4 +1,8 @@
-overrides:
-  droplet: link:../../.local/share/pnpm/global/5/node_modules/@drop-oss/droplet
+onlyBuiltDependencies:
+  - '@prisma/client'
+  - '@prisma/engines'
+  - '@tailwindcss/oxide'
+  - esbuild
+  - prisma
 
 shamefullyHoist: true

@@ -1,5 +1,5 @@
-import aclManager from "~/server/internal/acls";
-import libraryManager from "~/server/internal/library";
+import aclManager from "~~/server/internal/acls";
+import libraryManager from "~~/server/internal/library";
 
 export default defineEventHandler(async (h3) => {
   const allowed = await aclManager.allowSystemACL(h3, ["library:read"]);
@@ -7,9 +7,15 @@ export default defineEventHandler(async (h3) => {
 
   const unimportedGames = await libraryManager.fetchUnimportedGames();
   const games = await libraryManager.fetchGamesWithStatus();
+  const redists = await libraryManager.fetchRedistsWithStatus();
   const libraries = await libraryManager.fetchLibraries();
 
   // Fetch other library data here
 
-  return { unimportedGames, games, hasLibraries: libraries.length > 0 };
+  return {
+    unimportedGames,
+    games,
+    redists,
+    hasLibraries: libraries.length > 0,
+  };
 });

@@ -1,7 +1,7 @@
 import { type } from "arktype";
-import { readDropValidatedBody, throwingArktype } from "~/server/arktype";
-import aclManager from "~/server/internal/acls";
-import prisma from "~/server/internal/db/database";
+import { readDropValidatedBody, throwingArktype } from "~~/server/arktype";
+import aclManager from "~~/server/internal/acls";
+import prisma from "~~/server/internal/db/database";
 
 const GamePost = type({
   published: "boolean",
@@ -20,7 +20,7 @@ export default defineEventHandler(async (h3) => {
   if (!body.published && !body.developed)
     throw createError({
       statusCode: 400,
-      statusMessage: "Must be related (either developed or published).",
+      message: "Must be related (either developed or published).",
     });
 
   const publisherConnect = body.published

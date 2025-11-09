@@ -1,12 +1,12 @@
-import { AuthMec } from "~/prisma/client/enums";
-import prisma from "~/server/internal/db/database";
-import authManager, { createHashArgon2 } from "~/server/internal/auth";
+import { AuthMec } from "~~/prisma/client/enums";
+import prisma from "~~/server/internal/db/database";
+import authManager, { createHashArgon2 } from "~~/server/internal/auth";
 import * as jdenticon from "jdenticon";
-import objectHandler from "~/server/internal/objects";
+import objectHandler from "~~/server/internal/objects";
 import { type } from "arktype";
 import { randomUUID } from "node:crypto";
-import { throwingArktype } from "~/server/arktype";
-import userStatsManager from "~/server/internal/userstats";
+import { throwingArktype } from "~~/server/arktype";
+import userStatsManager from "~~/server/internal/userstats";
 
 export const SharedRegisterValidator = type({
   username: "string >= 5",
@@ -27,7 +27,7 @@ export default defineEventHandler<{
   if (!authManager.getAuthProviders().Simple)
     throw createError({
       statusCode: 403,
-      statusMessage: t("errors.auth.method.signinDisabled"),
+      message: t("errors.auth.method.signinDisabled"),
     });
 
   const user = await readValidatedBody(h3, CreateUserValidator);
@@ -38,7 +38,7 @@ export default defineEventHandler<{
   if (!invitation)
     throw createError({
       statusCode: 401,
-      statusMessage: t("errors.auth.invalidInvite"),
+      message: t("errors.auth.invalidInvite"),
     });
 
   // reuse items from invite
@@ -51,7 +51,7 @@ export default defineEventHandler<{
   if (existing > 0)
     throw createError({
       statusCode: 400,
-      statusMessage: t("errors.auth.usernameTaken"),
+      message: t("errors.auth.usernameTaken"),
     });
 
   const userId = randomUUID();

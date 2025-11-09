@@ -1,5 +1,5 @@
-import type { Prisma } from "~/prisma/client/client";
-import { MetadataSource } from "~/prisma/client/enums";
+import type { Prisma } from "~~/prisma/client/client";
+import { MetadataSource } from "~~/prisma/client/enums";
 import prisma from "../db/database";
 import type {
   _FetchGameMetadataParams,
@@ -13,13 +13,14 @@ import type {
 import { ObjectTransactionalHandler } from "../objects/transactional";
 import { PriorityListIndexed } from "../utils/prioritylist";
 import { systemConfig } from "../config/sys-conf";
-import type { TaskRunContext } from "../tasks";
-import taskHandler, { wrapTaskContext } from "../tasks";
 import { randomUUID } from "crypto";
 import { fuzzy } from "fast-fuzzy";
-import { logger } from "~/server/internal/logging";
-import { createGameImportTaskId } from "../library";
-import type { GameTagModel } from "~/prisma/client/models";
+import { logger } from "~~/server/internal/logging";
+import libraryManager, { createGameImportTaskId } from "../library";
+import type { GameTagModel } from "~~/prisma/client/models";
+import type { TaskRunContext} from "../tasks/utils";
+import { wrapTaskContext } from "../tasks/utils";
+import taskHandler from "../tasks";
 
 export class MissingMetadataProviderConfig extends Error {
   private providerName: string;
@@ -175,15 +176,8 @@ export class MetadataHandler {
     if (!provider)
       throw new Error(`Invalid metadata provider for ID "${result.sourceId}"`);
 
-    const existing = await prisma.game.findUnique({
-      where: {
-        metadataKey: {
-          metadataSource: provider.source(),
-          metadataId: result.id,
-        },
-      },
-    });
-    if (existing) return undefined;
+    const okay = await libraryManager.checkUnimportedGamePath(libraryId, libraryPath);
+    if (!okay) return undefined;
 
     const gameId = randomUUID();
 

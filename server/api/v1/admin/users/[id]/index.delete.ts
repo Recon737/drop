@@ -1,7 +1,7 @@
 import { defineEventHandler, createError } from "h3";
-import aclManager from "~/server/internal/acls";
-import prisma from "~/server/internal/db/database";
-import userStatsManager from "~/server/internal/userstats";
+import aclManager from "~~/server/internal/acls";
+import prisma from "~~/server/internal/db/database";
+import userStatsManager from "~~/server/internal/userstats";
 
 export default defineEventHandler(async (h3) => {
   const allowed = await aclManager.allowSystemACL(h3, ["user:delete"]);
@@ -20,12 +20,12 @@ export default defineEventHandler(async (h3) => {
   if (userId === "system")
     throw createError({
       statusCode: 400,
-      statusMessage: "Cannot interact with system user.",
+      message: "Cannot interact with system user.",
     });
 
   const user = await prisma.user.findUnique({ where: { id: userId } });
   if (!user)
-    throw createError({ statusCode: 404, statusMessage: "User not found." });
+    throw createError({ statusCode: 404, message: "User not found." });
 
   await prisma.user.delete({ where: { id: userId } });
   await userStatsManager.deleteUser();

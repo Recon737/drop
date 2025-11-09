@@ -1,8 +1,8 @@
 import { type } from "arktype";
-import { APITokenMode } from "~/prisma/client/enums";
-import { readDropValidatedBody, throwingArktype } from "~/server/arktype";
-import aclManager, { systemACLs } from "~/server/internal/acls";
-import prisma from "~/server/internal/db/database";
+import { APITokenMode } from "~~/prisma/client/enums";
+import { readDropValidatedBody, throwingArktype } from "~~/server/arktype";
+import aclManager, { systemACLs } from "~~/server/internal/acls";
+import prisma from "~~/server/internal/db/database";
 
 const CreateToken = type({
   name: "string",
@@ -22,7 +22,7 @@ export default defineEventHandler(async (h3) => {
   if (invalidACLs.length > 0)
     throw createError({
       statusCode: 400,
-      statusMessage: `Invalid ACLs: ${invalidACLs.join(", ")}`,
+      message: `Invalid ACLs: ${invalidACLs.join(", ")}`,
     });
 
   const token = await prisma.aPIToken.create({

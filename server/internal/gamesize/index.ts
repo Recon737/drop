@@ -1,8 +1,8 @@
+import { sum } from "~/utils/array";
 import cacheHandler from "../cache";
 import prisma from "../db/database";
 import manifestGenerator from "../downloads/manifest";
-import { sum } from "../../../utils/array";
-import type { Game, GameVersion } from "~/prisma/client/client";
+import type { Game, Version } from "~~/prisma/client/client";
 
 export type GameSize = {
   gameName: string;
@@ -15,7 +15,7 @@ export type VersionSize = GameSize & {
 };
 
 type VersionsSizes = {
-  [versionName: string]: VersionSize;
+  [versionId: string]: VersionSize;
 };
 
 type GameVersionsSize = {
@@ -42,7 +42,7 @@ class GameSizeManager {
 
   // All versions of a game combined
   async getCombinedGameSize(gameId: string) {
-    const versions = await prisma.gameVersion.findMany({
+    const versions = await prisma.version.findMany({
       where: { gameId },
     });
     const sizes = await Promise.all(
@@ -57,10 +57,10 @@ class GameSizeManager {
 
   async getGameVersionSize(
     gameId: string,
-    versionName?: string,
+    versionId?: string,
   ): Promise<number | null> {
-    if (!versionName) {
-      const version = await prisma.gameVersion.findFirst({
+    if (!versionId) {
+      const version = await prisma.version.findFirst({
         where: { gameId },
         orderBy: {
           versionIndex: "desc",
@@ -69,13 +69,10 @@ class GameSizeManager {
       if (!version) {
         return null;
       }
-      versionName = version.versionName;
+      versionId = version.versionId;
     }
 
-    const manifest = await manifestGenerator.generateManifest(
-      gameId,
-      versionName,
-    );
+    const manifest = await manifestGenerator.generateManifest(versionId);
     if (!manifest) {
       return null;
     }
@@ -84,11 +81,11 @@ class GameSizeManager {
   }
 
   private async isLatestVersion(
-    gameVersions: GameVersion[],
-    version: GameVersion,
+    gameVersions: Version[],
+    version: Version,
   ): Promise<boolean> {
     return gameVersions.length > 0
-      ? gameVersions[0].versionName === version.versionName
+      ? gameVersions[0].versionId === version.versionId
       : false;
   }
 
@@ -101,7 +98,7 @@ class GameSizeManager {
           return null;
         }
         const latestVersionName = Object.keys(versionsSizes).find(
-          (versionName) => versionsSizes[versionName].latest,
+          (versionId) => versionsSizes[versionId].latest,
         );
         if (!latestVersionName) {
           return null;
@@ -161,17 +158,17 @@ class GameSizeManager {
   }
 
   async cacheGameVersion(
-    game: Game & { versions: GameVersion[] },
-    versionName?: string,
+    game: Game & { versions: Version[] },
+    versionId?: string,
   ) {
-    const cacheVersion = async (version: GameVersion) => {
-      const size = await this.getGameVersionSize(game.id, version.versionName);
-      if (!version.versionName || !size) {
+    const cacheVersion = async (version: Version) => {
+      const size = await this.getGameVersionSize(game.id, version.versionId);
+      if (!version.versionId || !size) {
         return;
       }
 
       const versionsSizes = {
-        [version.versionName]: {
+        [version.versionId]: {
           size,
           gameName: game.mName,
           gameId: game.id,
@@ -186,9 +183,9 @@ class GameSizeManager {
       });
     };
 
-    if (versionName) {
-      const version = await prisma.gameVersion.findFirst({
-        where: { gameId: game.id, versionName },
+    if (versionId) {
+      const version = await prisma.version.findFirst({
+        where: { gameId: game.id, versionId },
       });
       if (!version) {
         return;
@@ -212,7 +209,7 @@ class GameSizeManager {
       .slice(0, top);
   }
 
-  async deleteGameVersion(gameId: string, version: string) {
+  async deleteGameVersion(gameId: string, versionId: string) {
     const game = await prisma.game.findFirst({ where: { id: gameId } });
     if (game) {
       await this.cacheCombinedGame(game);
@@ -222,7 +219,7 @@ class GameSizeManager {
       return;
     }
     // Remove the version from the VersionsSizes object
-    const { [version]: _, ...updatedVersionsSizes } = versionsSizes;
+    const { [versionId]: _, ...updatedVersionsSizes } = versionsSizes;
     await this.gameVersionsSizesCache.set(gameId, updatedVersionsSizes);
   }
 
@@ -232,5 +229,5 @@ class GameSizeManager {
   }
 }
 
-export const manager = new GameSizeManager();
-export default manager;
+export const gameSizeManager = new GameSizeManager();
+export default gameSizeManager;

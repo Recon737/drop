@@ -1,10 +1,10 @@
 import { type } from "arktype";
-import { readDropValidatedBody, throwingArktype } from "~/server/arktype";
-import aclManager from "~/server/internal/acls";
-import prisma from "~/server/internal/db/database";
-import libraryManager from "~/server/internal/library";
-import type { WorkingLibrarySource } from "~/server/api/v1/admin/library/sources/index.get";
-import { libraryConstructors } from "~/server/plugins/05.library-init";
+import { readDropValidatedBody, throwingArktype } from "~~/server/arktype";
+import aclManager from "~~/server/internal/acls";
+import prisma from "~~/server/internal/db/database";
+import libraryManager from "~~/server/internal/library";
+import type { WorkingLibrarySource } from "~~/server/api/v1/admin/library/sources/index.get";
+import { libraryConstructors } from "~~/server/plugins/05.library-init";
 
 const UpdateLibrarySource = type({
   id: "string",
@@ -26,7 +26,7 @@ export default defineEventHandler<{ body: typeof UpdateLibrarySource.infer }>(
     if (!source)
       throw createError({
         statusCode: 400,
-        statusMessage: "Library source not found",
+        message: "Library source not found",
       });
 
     const constructor = libraryConstructors[source.backend];
@@ -61,7 +61,7 @@ export default defineEventHandler<{ body: typeof UpdateLibrarySource.infer }>(
     } catch (e) {
       throw createError({
         statusCode: 400,
-        statusMessage: `Failed to create source: ${e}`,
+        message: `Failed to create source: ${e}`,
       });
     }
   },
