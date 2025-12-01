@@ -1,21 +1,26 @@
 #[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
 use std::{
-    cell::LazyCell,
-    fs::{self, metadata, File},
-    io::{self, BufRead, BufReader, Read, Seek, SeekFrom, Sink},
+    fs::{metadata, read_dir},
+    io::SeekFrom,
     path::{Path, PathBuf},
-    process::{Child, ChildStdout, Command, Stdio},
-    sync::{Arc, LazyLock},
+    process::Stdio,
+    sync::LazyLock,
 };
 
 use anyhow::{anyhow, Result};
+use async_trait::async_trait;
+use tokio::{
+    fs::File,
+    io::{AsyncReadExt as _, AsyncSeekExt as _, BufReader},
+    process::Command,
+};
 
 use crate::versions::types::{MinimumFileObject, VersionBackend, VersionFile};
 
 pub fn _list_files(vec: &mut Vec<PathBuf>, path: &Path) -> Result<()> {
     if metadata(path)?.is_dir() {
-        let paths = fs::read_dir(path)?;
+        let paths = read_dir(path)?;
         for path_result in paths {
             let full_path = path_result?.path();
             if metadata(&full_path)?.is_dir() {
@@ -33,8 +38,10 @@ pub fn _list_files(vec: &mut Vec<PathBuf>, path: &Path) -> Result<()> {
 pub struct PathVersionBackend {
     pub base_dir: PathBuf,
 }
+
+#[async_trait]
 impl VersionBackend for PathVersionBackend {
-    fn list_files(&mut self) -> anyhow::Result<Vec<VersionFile>> {
+    async fn list_files(&mut self) -> anyhow::Result<Vec<VersionFile>> {
         let mut vec = Vec::new();
         _list_files(&mut vec, &self.base_dir)?;
 
@@ -49,23 +56,24 @@ impl VersionBackend for PathVersionBackend {
                         .to_str()
                         .ok_or(anyhow!("Could not parse path"))?
                         .to_owned(),
-                )?,
+                )
+                .await?,
             );
         }
 
         Ok(results)
     }
 
-    fn reader(
+    async fn reader(
         &mut self,
         file: &VersionFile,
         start: u64,
         end: u64,
-    ) -> anyhow::Result<Box<dyn MinimumFileObject + 'static>> {
-        let mut file = File::open(self.base_dir.join(file.relative_filename.clone()))?;
+    ) -> anyhow::Result<Box<dyn MinimumFileObject + '_>> {
+        let mut file = File::open(self.base_dir.join(file.relative_filename.clone())).await?;
 
         if start != 0 {
-            file.seek(SeekFrom::Start(start))?;
+            file.seek(SeekFrom::Start(start)).await?;
         }
 
         if end != 0 {
@@ -75,14 +83,14 @@ impl VersionBackend for PathVersionBackend {
         Ok(Box::new(file))
     }
 
-    fn peek_file(&mut self, sub_path: String) -> anyhow::Result<VersionFile> {
+    async fn peek_file(&mut self, sub_path: String) -> anyhow::Result<VersionFile> {
         let pathbuf = self.base_dir.join(sub_path.clone());
         if !pathbuf.exists() {
             return Err(anyhow!("Path doesn't exist."));
         };
 
-        let file = File::open(pathbuf.clone())?;
-        let metadata = file.try_clone()?.metadata()?;
+        let file = File::open(pathbuf.clone()).await?;
+        let metadata = file.try_clone().await?.metadata().await?;
         let permission_object = metadata.permissions();
         let permissions = {
             let perm: u32;
@@ -110,7 +118,7 @@ impl VersionBackend for PathVersionBackend {
 }
 
 pub static SEVEN_ZIP_INSTALLED: LazyLock<bool> =
-    LazyLock::new(|| Command::new("7z").output().is_ok());
+    LazyLock::new(|| std::process::Command::new("7z").output().is_ok());
 // https://7-zip.opensource.jp/chm/general/formats.htm
 // Intentionally repeated some because it's a trivial cost and it's easier to directly copy from the docs above
 pub const SUPPORTED_FILE_EXTENSIONS: [&str; 89] = [
@@ -136,43 +144,12 @@ impl ZipVersionBackend {
     }
 }
 
-pub struct ZipFileWrapper {
-    command: Child,
-    reader: BufReader<ChildStdout>,
-}
-
-impl ZipFileWrapper {
-    pub fn new(mut command: Child) -> Self {
-        let stdout = command
-            .stdout
-            .take()
-            .expect("failed to access stdout of 7z");
-        let reader = BufReader::new(stdout);
-        ZipFileWrapper { command, reader }
-    }
-}
-
-/**
- * This read implemention is a result of debugging hell
- * It should probably be replaced with a .take() call.
- */
-impl Read for ZipFileWrapper {
-    fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
-        self.reader.read(buf)
-    }
-}
-
-impl Drop for ZipFileWrapper {
-    fn drop(&mut self) {
-        self.command.wait().expect("failed to wait for 7z exit");
-    }
-}
-
+#[async_trait]
 impl VersionBackend for ZipVersionBackend {
-    fn list_files(&mut self) -> anyhow::Result<Vec<VersionFile>> {
+    async fn list_files(&mut self) -> anyhow::Result<Vec<VersionFile>> {
         let mut list_command = Command::new("7z");
         list_command.args(vec!["l", "-ba", &self.path]);
-        let result = list_command.output()?;
+        let result = list_command.output().await?;
         if !result.status.success() {
             return Err(anyhow!(
                 "failed to list files: code {:?}",
@@ -215,7 +192,7 @@ impl VersionBackend for ZipVersionBackend {
         Ok(results)
     }
 
-    fn reader(
+    async fn reader(
         &mut self,
         file: &VersionFile,
         start: u64,
@@ -223,15 +200,20 @@ impl VersionBackend for ZipVersionBackend {
     ) -> anyhow::Result<Box<dyn MinimumFileObject + '_>> {
         let mut read_command = Command::new("7z");
         read_command.args(vec!["e", "-so", &self.path, &file.relative_filename]);
-        let output = read_command
+        let mut output = read_command
             .stdout(Stdio::piped())
             .spawn()
             .expect("failed to spawn 7z");
-        Ok(Box::new(ZipFileWrapper::new(output)))
+        let stdout = output
+            .stdout
+            .take()
+            .ok_or(anyhow!("no stdout on 7zip process"))?;
+        let reader = BufReader::new(stdout);
+        Ok(Box::new(reader))
     }
 
-    fn peek_file(&mut self, sub_path: String) -> anyhow::Result<VersionFile> {
-        let files = self.list_files()?;
+    async fn peek_file(&mut self, sub_path: String) -> anyhow::Result<VersionFile> {
+        let files = self.list_files().await?;
         let file = files
             .iter()
             .find(|v| v.relative_filename == sub_path)
