@@ -11,33 +11,9 @@ pub struct VersionFile {
     pub size: u64,
 }
 
-pub trait MinimumFileObject: AsyncRead + Send {}
-impl<T: AsyncRead + Send> MinimumFileObject for T {}
+pub trait MinimumFileObject: AsyncRead + Send + Unpin {}
+impl<T: AsyncRead + Send + Unpin> MinimumFileObject for T {}
 
-// Intentionally not a generic, because of types in read_file
-pub struct ReadToAsyncRead<'a> {
-    pub inner: Box<dyn Read + Send + 'a>,
-}
-
-const ASYNC_READ_BUFFER_SIZE: usize = 8128;
-
-impl<'a> AsyncRead for ReadToAsyncRead<'a> {
-    fn poll_read(
-        mut self: std::pin::Pin<&mut Self>,
-        _cx: &mut std::task::Context<'_>,
-        buf: &mut tokio::io::ReadBuf<'_>,
-    ) -> std::task::Poll<io::Result<()>> {
-        let mut read_buf = [0u8; ASYNC_READ_BUFFER_SIZE];
-        let read_size = ASYNC_READ_BUFFER_SIZE.min(buf.remaining());
-        match self.inner.read(&mut read_buf[0..read_size]) {
-            Ok(read) => {
-                buf.put_slice(&read_buf[0..read]);
-                std::task::Poll::Ready(Ok(()))
-            }
-            Err(err) => std::task::Poll::Ready(Err(err)),
-        }
-    }
-}
 
 #[async_trait]
 pub trait VersionBackend: DynClone {
