@@ -13,7 +13,7 @@ pub mod backends;
 pub mod types;
 pub fn create_backend_constructor<'a>(
     path: &Path,
-) -> Option<Box<dyn FnOnce() -> Result<Box<dyn VersionBackend + Send + 'a>>>> {
+) -> Option<Box<dyn FnOnce() -> Result<Box<dyn VersionBackend + Send + Sync + 'a>>>> {
     if !path.exists() {
         return None;
     }
