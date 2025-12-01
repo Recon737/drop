@@ -2,7 +2,7 @@
 edition = "2021"
 authors = ["Drop-OSS"]
 name = "droplet-rs"
-version = "0.7.3"
+version = "0.8.0"
 license = "AGPL-3.0-only"
 description = "Droplet is a `napi.rs` Rust/Node.js package full of high-performance and low-level utils for Drop"
 
@@ -12,6 +12,9 @@ time-macros = "0.2.22"
 time = "0.3.41"
 webpki = "0.22.4"
 ring = "0.17.14"
+dyn-clone = "1.0.20"
+tokio = "1.48.0"
+anyhow = "1.0.100"
 
 [dependencies.x509-parser]
 version = "0.17.0"
