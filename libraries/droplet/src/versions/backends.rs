@@ -69,7 +69,7 @@ impl VersionBackend for PathVersionBackend {
         file: &VersionFile,
         start: u64,
         end: u64,
-    ) -> anyhow::Result<Box<dyn MinimumFileObject + '_>> {
+    ) -> anyhow::Result<Box<dyn MinimumFileObject>> {
         let mut file = File::open(self.base_dir.join(file.relative_filename.clone())).await?;
 
         if start != 0 {
@@ -197,7 +197,7 @@ impl VersionBackend for ZipVersionBackend {
         file: &VersionFile,
         start: u64,
         end: u64,
-    ) -> anyhow::Result<Box<dyn MinimumFileObject + '_>> {
+    ) -> anyhow::Result<Box<dyn MinimumFileObject>> {
         let mut read_command = Command::new("7z");
         read_command.args(vec!["e", "-so", &self.path, &file.relative_filename]);
         let mut output = read_command

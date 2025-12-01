@@ -25,7 +25,7 @@ pub trait VersionBackend: DynClone {
         file: &VersionFile,
         start: u64,
         end: u64,
-    ) -> anyhow::Result<Box<dyn MinimumFileObject + '_>>;
+    ) -> anyhow::Result<Box<dyn MinimumFileObject>>;
 }
 
 dyn_clone::clone_trait_object!(VersionBackend);
