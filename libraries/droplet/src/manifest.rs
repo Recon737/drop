@@ -18,7 +18,7 @@ use sha2::{Digest as _, Sha256};
 use tokio::{io::AsyncReadExt as _, join, sync::Mutex};
 
 #[derive(Serialize, Clone)]
-struct FileEntry {
+pub struct FileEntry {
     filename: String,
     start: usize,
     length: usize,
@@ -26,13 +26,13 @@ struct FileEntry {
 }
 
 #[derive(Serialize, Clone)]
-struct ChunkData {
+pub struct ChunkData {
     files: Vec<FileEntry>,
     checksum: String,
 }
 
 #[derive(Serialize)]
-struct Manifest {
+pub struct Manifest {
     version: String,
     chunks: HashMap<String, ChunkData>,
     size: u64,
@@ -47,7 +47,7 @@ pub async fn generate_manifest_rusty<T: Fn(String), V: Fn(f32)>(
     dir: &Path,
     progress_sfn: V,
     log_sfn: T,
-) -> anyhow::Result<String> {
+) -> anyhow::Result<Manifest> {
     let mut backend =
         create_backend_constructor(dir).ok_or(anyhow!("Could not create backend for path."))?()?;
 
@@ -222,10 +222,9 @@ pub async fn generate_manifest_rusty<T: Fn(String), V: Fn(f32)>(
     let manifest = manifest.lock().await;
     let manifest = manifest.clone();
 
-    Ok(json!(Manifest {
+    Ok(Manifest {
         version: "2".to_string(),
         chunks: manifest,
         size: total_manifest_length.fetch_add(0, Ordering::Relaxed)
     })
-    .to_string())
 }
