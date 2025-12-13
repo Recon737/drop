@@ -1,8 +1,8 @@
-use std::{fmt::Debug, io::Read};
+use std::fmt::Debug;
 
 use async_trait::async_trait;
 use dyn_clone::DynClone;
-use tokio::io::{self, AsyncRead};
+use tokio::io::AsyncRead;
 
 #[derive(Debug, Clone)]
 pub struct VersionFile {

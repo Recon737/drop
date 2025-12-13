@@ -159,8 +159,8 @@ impl VersionBackend for ZipVersionBackend {
         let raw_result = String::from_utf8(result.stdout)?;
         let files = raw_result
             .split("\n")
-            .filter(|v| v.len() > 0)
-            .map(|v| v.split(" ").filter(|v| v.len() > 0));
+            .filter(|v| !v.is_empty())
+            .map(|v| v.split(" ").filter(|v| !v.is_empty()));
         let mut results = Vec::new();
 
         for file in files {
@@ -179,8 +179,7 @@ impl VersionBackend for ZipVersionBackend {
             }
             results.push(VersionFile {
                 relative_filename: name
-                    .into_iter()
-                    .map(|v| *v)
+                    .into_iter().copied()
                     .fold(String::new(), |a, b| a + b + " ")
                     .trim_end()
                     .to_owned(),

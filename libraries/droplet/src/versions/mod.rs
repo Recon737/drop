@@ -41,8 +41,7 @@ pub fn create_backend_constructor<'a>(
         if let Some(extension) = path.extension().and_then(|v| v.to_str()) {
             let supported = SUPPORTED_FILE_EXTENSIONS
                 .iter()
-                .find(|v| ***v == *extension)
-                .is_some();
+                .any(|v| **v == *extension);
             if supported {
                 let buf = path.to_path_buf();
                 return Some(Box::new(move || Ok(Box::new(ZipVersionBackend::new(buf)?))));

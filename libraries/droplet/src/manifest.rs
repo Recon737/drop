@@ -39,11 +39,11 @@ struct Manifest {
 }
 
 const CHUNK_SIZE: u64 = 1024 * 1024 * 64;
-const WIGGLE: u64 = 1024 * 1024 * 1;
+const WIGGLE: u64 = 1024 * 1024;
 
 use crate::versions::{create_backend_constructor, types::VersionFile};
 
-pub async fn generate_manifest_rusty<T: Fn(String) -> (), V: Fn(f32) -> ()>(
+pub async fn generate_manifest_rusty<T: Fn(String), V: Fn(f32)>(
     dir: &Path,
     progress_sfn: V,
     log_sfn: T,
@@ -58,7 +58,7 @@ pub async fn generate_manifest_rusty<T: Fn(String) -> (), V: Fn(f32) -> ()>(
     let mut chunks: Vec<Vec<(VersionFile, u64, u64)>> = Vec::new();
     let mut current_chunk: Vec<(VersionFile, u64, u64)> = Vec::new();
 
-    log_sfn(format!("organizing files into chunks...",));
+    log_sfn("organizing files into chunks...".to_string());
 
     for version_file in files {
         // If we need the whole file, and this file would take up a whole chunk, add it to it's own chunk and move on
@@ -73,14 +73,14 @@ pub async fn generate_manifest_rusty<T: Fn(String) -> (), V: Fn(f32) -> ()>(
 
         // If we need the whole file, add this current file and move on, potentially adding and creating new chunk if need be
         if required_single_file {
-            let size = version_file.size.try_into().unwrap();
+            let size = version_file.size;
             current_chunk.push((version_file, 0, size));
 
             current_size += size;
 
             if current_size >= CHUNK_SIZE {
                 // Pop current and add, then reset
-                let new_chunk = std::mem::replace(&mut current_chunk, Vec::new());
+                let new_chunk = std::mem::take(&mut current_chunk);
                 chunks.push(new_chunk);
             }
 
@@ -93,7 +93,7 @@ pub async fn generate_manifest_rusty<T: Fn(String) -> (), V: Fn(f32) -> ()>(
             let remaining_budget = CHUNK_SIZE - current_size;
             current_chunk.push((version_file.clone(), 0, remaining_budget));
 
-            let new_chunk = std::mem::replace(&mut current_chunk, Vec::new());
+            let new_chunk = std::mem::take(&mut current_chunk);
             chunks.push(new_chunk);
 
             let remaining_size = version_file.size - remaining_budget;
@@ -119,11 +119,11 @@ pub async fn generate_manifest_rusty<T: Fn(String) -> (), V: Fn(f32) -> ()>(
 
         if current_size >= CHUNK_SIZE {
             // Pop current and add, then reset
-            let new_chunk = std::mem::replace(&mut current_chunk, Vec::new());
+            let new_chunk = std::mem::take(&mut current_chunk);
             chunks.push(new_chunk);
         }
     }
-    if current_chunk.len() > 0 {
+    if !current_chunk.is_empty() {
         chunks.push(current_chunk);
     }
 
@@ -140,12 +140,13 @@ pub async fn generate_manifest_rusty<T: Fn(String) -> (), V: Fn(f32) -> ()>(
     let futures: FuturesUnordered<impl Future<Output = Result<(), Error>>> =
         FuturesUnordered::new();
     let (send_log, mut recieve_log) = tokio::sync::mpsc::channel(16);
+    let chunks_length = chunks.len();
     for (index, chunk) in chunks.into_iter().enumerate() {
         let send_log = send_log.clone();
         let backend = backend.clone();
         let total_manifest_length = total_manifest_length.clone();
         let manifest = manifest.clone();
-        futures.push((async move || -> Result<(), Error> {
+        futures.push(async move {
             let mut read_buf = vec![0; 1024 * 1024 * 64];
 
             let uuid = uuid::Uuid::new_v4().to_string();
@@ -159,17 +160,6 @@ pub async fn generate_manifest_rusty<T: Fn(String) -> (), V: Fn(f32) -> ()>(
             let mut chunk_length = 0;
 
             for (file, start, length) in chunk {
-                /*
-                send_log
-                    .send(format!(
-                        "reading {} from {} to {}, {}",
-                        file.relative_filename,
-                        start,
-                        start + length,
-                        format_size(length, BINARY)
-                    ))
-                    .await?;
-                 */
                 let mut reader = {
                     let mut backend_lock = backend.lock().await;
                     let reader = backend_lock.reader(&file, start, start + length).await?;
@@ -196,8 +186,9 @@ pub async fn generate_manifest_rusty<T: Fn(String) -> (), V: Fn(f32) -> ()>(
 
             send_log
                 .send(format!(
-                    "created chunk of size {} (index {})",
+                    "created chunk of size {} from {} files (index {})",
                     format_size(chunk_length, BINARY),
+                    chunk_data.files.len(),
                     index
                 ))
                 .await?;
@@ -212,13 +203,17 @@ pub async fn generate_manifest_rusty<T: Fn(String) -> (), V: Fn(f32) -> ()>(
             };
 
             Ok(())
-        })());
+        });
     }
     drop(send_log);
     join!(
         async move {
+            let mut current_progress = 0f32;
+            let total_progress = chunks_length as f32;
             while let Some(message) = recieve_log.recv().await {
                 log_sfn(message);
+                current_progress += 1.0f32;
+                progress_sfn((current_progress / total_progress) * 100.0f32)
             }
         },
         futures.collect::<Vec<Result<(), Error>>>()
@@ -226,8 +221,6 @@ pub async fn generate_manifest_rusty<T: Fn(String) -> (), V: Fn(f32) -> ()>(
 
     let manifest = manifest.lock().await;
     let manifest = manifest.clone();
-    let manifest_size = size_of_val(&manifest);
-    println!("manifest uses {} bytes", manifest_size);
 
     Ok(json!(Manifest {
         version: "2".to_string(),

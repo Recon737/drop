@@ -8,9 +8,7 @@ description = "Droplet is a `napi.rs` Rust/Node.js package full of high-performa
 
 [dependencies]
 hex = "0.4.3"
-time-macros = "0.2.22"
 time = "0.3.41"
-webpki = "0.22.4"
 ring = "0.17.14"
 dyn-clone = "1.0.20"
 tokio = { version = "^1.48.0", features = ["process", "fs", "io-util", "sync", "macros", "rt-multi-thread"] }
