@@ -195,8 +195,8 @@ impl VersionBackend for ZipVersionBackend {
     async fn reader(
         &mut self,
         file: &VersionFile,
-        start: u64,
-        end: u64,
+        _start: u64,
+        _end: u64,
     ) -> anyhow::Result<Box<dyn MinimumFileObject>> {
         let mut read_command = Command::new("7z");
         read_command.args(vec!["e", "-so", &self.path, &file.relative_filename]);

@@ -1,14 +1,23 @@
-use std::{collections::HashMap, path::Path};
+use std::{
+    collections::HashMap,
+    future::Future,
+    path::Path,
+    sync::{
+        atomic::{AtomicU64, Ordering},
+        Arc,
+    },
+};
 
-use anyhow::anyhow;
+use anyhow::{anyhow, Error};
+use futures::{stream::FuturesUnordered, StreamExt};
 use hex::ToHex as _;
-use humansize::{BINARY, format_size};
+use humansize::{format_size, BINARY};
 use serde::Serialize;
 use serde_json::json;
 use sha2::{Digest as _, Sha256};
-use tokio::io::AsyncReadExt as _;
+use tokio::{io::AsyncReadExt as _, join, sync::Mutex};
 
-#[derive(Serialize)]
+#[derive(Serialize, Clone)]
 struct FileEntry {
     filename: String,
     start: usize,
@@ -16,7 +25,7 @@ struct FileEntry {
     permissions: u32,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Clone)]
 struct ChunkData {
     files: Vec<FileEntry>,
     checksum: String,
@@ -24,9 +33,9 @@ struct ChunkData {
 
 #[derive(Serialize)]
 struct Manifest {
-  version: String,
-  chunks: HashMap<String, ChunkData>,
-  size: u64,
+    version: String,
+    chunks: HashMap<String, ChunkData>,
+    size: u64,
 }
 
 const CHUNK_SIZE: u64 = 1024 * 1024 * 64;
@@ -42,7 +51,7 @@ pub async fn generate_manifest_rusty<T: Fn(String) -> (), V: Fn(f32) -> ()>(
     let mut backend =
         create_backend_constructor(dir).ok_or(anyhow!("Could not create backend for path."))?()?;
 
-    let required_single_file = true; //backend.require_whole_files();
+    let required_single_file = backend.require_whole_files();
 
     let files = backend.list_files().await?;
     // Filepath to chunk data
@@ -123,71 +132,107 @@ pub async fn generate_manifest_rusty<T: Fn(String) -> (), V: Fn(f32) -> ()>(
         chunks.len()
     ));
 
-    let mut manifest: HashMap<String, ChunkData> = HashMap::new();
-    let mut total_manifest_length = 0;
+    let manifest: Arc<Mutex<HashMap<String, ChunkData>>> = Arc::new(Mutex::new(HashMap::new()));
+    let total_manifest_length = Arc::new(AtomicU64::new(0));
 
-    let mut read_buf = vec![0; 1024 * 1024 * 64];
+    let backend = Arc::new(Mutex::new(backend));
 
-    let chunk_len = chunks.len();
+    let futures: FuturesUnordered<impl Future<Output = Result<(), Error>>> =
+        FuturesUnordered::new();
+    let (send_log, mut recieve_log) = tokio::sync::mpsc::channel(16);
     for (index, chunk) in chunks.into_iter().enumerate() {
-        let uuid = uuid::Uuid::new_v4().to_string();
-        let mut hasher = Sha256::new();
+        let send_log = send_log.clone();
+        let backend = backend.clone();
+        let total_manifest_length = total_manifest_length.clone();
+        let manifest = manifest.clone();
+        futures.push((async move || -> Result<(), Error> {
+            let mut read_buf = vec![0; 1024 * 1024 * 64];
 
-        let mut chunk_data = ChunkData {
-            files: Vec::new(),
-            checksum: String::new(),
-        };
+            let uuid = uuid::Uuid::new_v4().to_string();
+            let mut hasher = Sha256::new();
 
-        let mut chunk_length = 0;
+            let mut chunk_data = ChunkData {
+                files: Vec::new(),
+                checksum: String::new(),
+            };
 
-        for (file, start, length) in chunk {
-            log_sfn(format!(
-                "reading {} from {} to {}, {}",
-                file.relative_filename,
-                start,
-                start + length,
-                format_size(length, BINARY)
-            ));
-            let mut reader = backend.reader(&file, start, start + length).await?;
+            let mut chunk_length = 0;
 
-            loop {
-                let amount = reader.read(&mut read_buf).await?;
-                if amount == 0 {
-                    break;
+            for (file, start, length) in chunk {
+                /*
+                send_log
+                    .send(format!(
+                        "reading {} from {} to {}, {}",
+                        file.relative_filename,
+                        start,
+                        start + length,
+                        format_size(length, BINARY)
+                    ))
+                    .await?;
+                 */
+                let mut reader = {
+                    let mut backend_lock = backend.lock().await;
+                    let reader = backend_lock.reader(&file, start, start + length).await?;
+                    reader
+                };
+
+                loop {
+                    let amount = reader.read(&mut read_buf).await?;
+                    if amount == 0 {
+                        break;
+                    }
+                    hasher.update(&read_buf[0..amount]);
                 }
-                hasher.update(&read_buf[0..amount]);
+
+                chunk_length += length;
+
+                chunk_data.files.push(FileEntry {
+                    filename: file.relative_filename,
+                    start: start.try_into().unwrap(),
+                    length: length.try_into().unwrap(),
+                    permissions: file.permission,
+                });
             }
 
-            chunk_length += length;
+            send_log
+                .send(format!(
+                    "created chunk of size {} (index {})",
+                    format_size(chunk_length, BINARY),
+                    index
+                ))
+                .await?;
 
-            chunk_data.files.push(FileEntry {
-                filename: file.relative_filename,
-                start: start.try_into().unwrap(),
-                length: length.try_into().unwrap(),
-                permissions: file.permission,
-            });
-        }
+            total_manifest_length.fetch_add(chunk_length, Ordering::Relaxed);
 
-        log_sfn(format!(
-            "created chunk of size {} ({}/{})",
-            format_size(chunk_length, BINARY),
-            index,
-            chunk_len
-        ));
-        total_manifest_length += chunk_length;
+            let hash: String = hasher.finalize().encode_hex();
+            chunk_data.checksum = hash;
+            {
+                let mut manifest_lock = manifest.lock().await;
+                manifest_lock.insert(uuid, chunk_data);
+            };
 
-        let hash: String = hasher.finalize().encode_hex();
-        chunk_data.checksum = hash;
-        manifest.insert(uuid, chunk_data);
-
-        let progress: f32 = (index as f32 / chunk_len as f32) * 100.0f32;
-        progress_sfn(progress);
+            Ok(())
+        })());
     }
+    drop(send_log);
+    join!(
+        async move {
+            while let Some(message) = recieve_log.recv().await {
+                log_sfn(message);
+            }
+        },
+        futures.collect::<Vec<Result<(), Error>>>()
+    );
+
+    let manifest = manifest.lock().await;
+    let manifest = manifest.clone();
+    let manifest_size = size_of_val(&manifest);
+    println!("manifest uses {} bytes", manifest_size);
 
     Ok(json!(Manifest {
         version: "2".to_string(),
         chunks: manifest,
-        size: total_manifest_length
+        size: total_manifest_length.fetch_add(0, Ordering::Relaxed)
     })
     .to_string())
 }
