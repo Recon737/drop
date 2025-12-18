@@ -12,12 +12,12 @@ use anyhow::{anyhow, Error};
 use futures::{stream::FuturesUnordered, StreamExt};
 use hex::ToHex as _;
 use humansize::{format_size, BINARY};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use serde_json::json;
 use sha2::{Digest as _, Sha256};
 use tokio::{io::AsyncReadExt as _, join, sync::Mutex};
 
-#[derive(Serialize, Clone)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct FileEntry {
     filename: String,
     start: usize,
@@ -25,14 +25,14 @@ pub struct FileEntry {
     permissions: u32,
 }
 
-#[derive(Serialize, Clone)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct ChunkData {
     files: Vec<FileEntry>,
     checksum: String,
     iv: [u8; 16],
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize)]
 pub struct Manifest {
     version: String,
     chunks: HashMap<String, ChunkData>,
