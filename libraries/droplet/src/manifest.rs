@@ -19,25 +19,25 @@ use tokio::{io::AsyncReadExt as _, join, sync::Mutex};
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct FileEntry {
-    filename: String,
-    start: usize,
-    length: usize,
-    permissions: u32,
+    pub filename: String,
+    pub start: usize,
+    pub length: usize,
+    pub permissions: u32,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct ChunkData {
-    files: Vec<FileEntry>,
-    checksum: String,
-    iv: [u8; 16],
+    pub files: Vec<FileEntry>,
+    pub checksum: String,
+    pub iv: [u8; 16],
 }
 
 #[derive(Serialize, Deserialize)]
 pub struct Manifest {
-    version: String,
-    chunks: HashMap<String, ChunkData>,
-    size: u64,
-    key: [u8; 16],
+    pub version: String,
+    pub chunks: HashMap<String, ChunkData>,
+    pub size: u64,
+    pub key: [u8; 16],
 }
 
 const CHUNK_SIZE: u64 = 1024 * 1024 * 64;
