@@ -29,7 +29,7 @@ pub struct FileEntry {
 pub struct ChunkData {
     files: Vec<FileEntry>,
     checksum: String,
-    //iv: [u8; 16]
+    iv: [u8; 16],
 }
 
 #[derive(Serialize)]
@@ -37,6 +37,7 @@ pub struct Manifest {
     version: String,
     chunks: HashMap<String, ChunkData>,
     size: u64,
+    key: [u8; 16],
 }
 
 const CHUNK_SIZE: u64 = 1024 * 1024 * 64;
@@ -153,10 +154,12 @@ pub async fn generate_manifest_rusty<T: Fn(String), V: Fn(f32)>(
             let uuid = uuid::Uuid::new_v4().to_string();
             let mut hasher = Sha256::new();
 
+            let mut iv = [0u8; 16];
+            getrandom::fill(&mut iv).map_err(|err| anyhow!("failed to generate IV: {:?}", err))?;
             let mut chunk_data = ChunkData {
                 files: Vec::new(),
                 checksum: String::new(),
-                //iv: 
+                iv,
             };
 
             let mut chunk_length = 0;
@@ -224,9 +227,13 @@ pub async fn generate_manifest_rusty<T: Fn(String), V: Fn(f32)>(
     let manifest = manifest.lock().await;
     let manifest = manifest.clone();
 
+    let mut key = [0u8; 16];
+    getrandom::fill(&mut key).map_err(|err| anyhow!("failed to generate key: {:?}", err))?;
+
     Ok(Manifest {
         version: "2".to_string(),
         chunks: manifest,
-        size: total_manifest_length.fetch_add(0, Ordering::Relaxed)
+        size: total_manifest_length.fetch_add(0, Ordering::Relaxed),
+        key,
     })
 }
