@@ -15,6 +15,7 @@ use tokio::{
     io::{AsyncReadExt as _, AsyncSeekExt as _, BufReader},
     process::Command,
 };
+use x509_parser::nom::InputIter;
 
 use crate::versions::types::{MinimumFileObject, VersionBackend, VersionFile};
 
@@ -148,7 +149,7 @@ impl ZipVersionBackend {
 impl VersionBackend for ZipVersionBackend {
     async fn list_files(&mut self) -> anyhow::Result<Vec<VersionFile>> {
         let mut list_command = Command::new("7z");
-        list_command.args(vec!["l", "-ba", &self.path]);
+        list_command.args(vec!["l", &self.path]);
         let result = list_command.output().await?;
         if !result.status.success() {
             return Err(anyhow!(
@@ -157,35 +158,38 @@ impl VersionBackend for ZipVersionBackend {
             ));
         }
         let raw_result = String::from_utf8(result.stdout)?;
-        let files = raw_result
-            .split("\n")
-            .filter(|v| !v.is_empty())
-            .map(|v| v.split(" ").filter(|v| !v.is_empty()));
-        let mut results = Vec::new();
+        let mut lines = raw_result.split("\n").skip(11);
 
-        for file in files {
-            let values = file.collect::<Vec<&str>>();
-            let mut iter = values.iter();
-            let (date, time, attrs, size, compress, name) = (
-                iter.next().expect("failed to read date"),
-                iter.next().expect("failed to read time"),
-                iter.next().expect("failed to read attrs"),
-                iter.next().expect("failed to read size"),
-                iter.next().expect("failed to read compress"),
-                iter.collect::<Vec<&&str>>(),
-            );
-            if attrs.starts_with("D") {
-                continue;
-            }
-            results.push(VersionFile {
-                relative_filename: name
-                    .into_iter().copied()
-                    .fold(String::new(), |a, b| a + b + " ")
-                    .trim_end()
-                    .to_owned(),
-                permission: 0o744, // owner r/w/x, everyone else, read
-                size: size.parse().unwrap(),
-            });
+        let mut column_lines = lines
+            .find(|v| v.starts_with('-'))
+            .ok_or(anyhow!("invalid 7z output"))?
+            .chars();
+        let file_lines = lines.take_while(|v| !v.starts_with("-"));
+
+        /*
+           Date      Time    Attr         Size   Compressed  Name
+        ------------------- ----- ------------ ------------  ------------------------
+                 */
+        let datetime_pos = 0usize;
+        let attrs_pos = datetime_pos + column_lines.position(|v| v == ' ').unwrap() + 1;
+        let size_pos = attrs_pos + column_lines.position(|v| v == ' ').unwrap() + 1;
+        let compressed_size_pos = size_pos + column_lines.position(|v| v == ' ').unwrap() + 1;
+        let name_pos = compressed_size_pos + column_lines.position(|v| v == ' ').unwrap() + 1;
+
+        let mut results = Vec::new();
+        for file in file_lines {
+            let name = file[name_pos..].trim();
+            let size = file[size_pos..compressed_size_pos].trim();
+
+            let size = str::parse::<u64>(size)?;
+
+            let version_file = VersionFile {
+                relative_filename: name.to_string(),
+                permission: 0o744,
+                size: size,
+            };
+
+            results.push(version_file);
         }
 
         Ok(results)

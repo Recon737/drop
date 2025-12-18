@@ -1,0 +1,1 @@
+[VersionFile { relative_filename: "setup.exe", permission: 484, size: 1024000000 }, VersionFile { relative_filename: "test file.txt", permission: 484, size: 12 }]

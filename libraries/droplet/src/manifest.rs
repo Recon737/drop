@@ -29,6 +29,7 @@ pub struct FileEntry {
 pub struct ChunkData {
     files: Vec<FileEntry>,
     checksum: String,
+    //iv: [u8; 16]
 }
 
 #[derive(Serialize)]
@@ -155,6 +156,7 @@ pub async fn generate_manifest_rusty<T: Fn(String), V: Fn(f32)>(
             let mut chunk_data = ChunkData {
                 files: Vec::new(),
                 checksum: String::new(),
+                //iv: 
             };
 
             let mut chunk_length = 0;
