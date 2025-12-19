@@ -15,7 +15,6 @@ use tokio::{
     io::{AsyncReadExt as _, AsyncSeekExt as _, BufReader},
     process::Command,
 };
-use x509_parser::nom::InputIter;
 
 use crate::versions::types::{MinimumFileObject, VersionBackend, VersionFile};
 
@@ -55,7 +54,7 @@ impl VersionBackend for PathVersionBackend {
                 self.peek_file(
                     relative
                         .to_str()
-                        .ok_or(anyhow!("Could not parse path"))?
+                        .ok_or(anyhow!("Could not parse path: {}", relative.to_string_lossy()))?
                         .to_owned(),
                 )
                 .await?,
@@ -87,7 +86,7 @@ impl VersionBackend for PathVersionBackend {
     async fn peek_file(&mut self, sub_path: String) -> anyhow::Result<VersionFile> {
         let pathbuf = self.base_dir.join(sub_path.clone());
         if !pathbuf.exists() {
-            return Err(anyhow!("Path doesn't exist."));
+            return Err(anyhow!("Path doesn't exist: {}", pathbuf.to_string_lossy()));
         };
 
         let file = File::open(pathbuf.clone()).await?;
