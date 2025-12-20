@@ -55,26 +55,25 @@ pub async fn generate_manifest_rusty<T: Fn(String), V: Fn(f32)>(
 
     let required_single_file = backend.require_whole_files();
 
-    let files = backend.list_files().await?;
+    let mut files = backend.list_files().await?;
+    files.sort_by(|a, b| a.size.cmp(&b.size));
     // Filepath to chunk data
     let mut chunks: Vec<Vec<(VersionFile, u64, u64)>> = Vec::new();
     let mut current_chunk: Vec<(VersionFile, u64, u64)> = Vec::new();
 
     log_sfn("organizing files into chunks...".to_string());
 
-    for version_file in files {
-        // If we need the whole file, and this file would take up a whole chunk, add it to it's own chunk and move on
-        if required_single_file && version_file.size >= CHUNK_SIZE {
-            let size = version_file.size;
-            chunks.push(vec![(version_file, 0, size)]);
+    if required_single_file {
+        for version_file in files {
+            if version_file.size >= CHUNK_SIZE {
+                let size = version_file.size;
+                chunks.push(vec![(version_file, 0, size)]);
 
-            continue;
-        }
+                continue;
+            }
 
-        let mut current_size = current_chunk.iter().map(|v| v.2 - v.1).sum::<u64>();
+            let mut current_size = current_chunk.iter().map(|v| v.2).sum::<u64>();
 
-        // If we need the whole file, add this current file and move on, potentially adding and creating new chunk if need be
-        if required_single_file {
             let size = version_file.size;
             current_chunk.push((version_file, 0, size));
 
@@ -88,43 +87,36 @@ pub async fn generate_manifest_rusty<T: Fn(String), V: Fn(f32)>(
 
             continue;
         }
+    } else {
+        for version_file in files {
+            let current_size = current_chunk.iter().map(|v| v.2).sum::<u64>();
 
-        // Otherwise we calculate how much of the file we need, then use that much
-        let remaining_budget = (CHUNK_SIZE + WIGGLE) - current_size;
-        if version_file.size >= remaining_budget {
-            let remaining_budget = CHUNK_SIZE - current_size;
-            current_chunk.push((version_file.clone(), 0, remaining_budget));
+            if version_file.size + current_size < CHUNK_SIZE + WIGGLE {
+                let size = version_file.size;
+                current_chunk.push((version_file, 0, size));
 
-            let new_chunk = std::mem::take(&mut current_chunk);
-            chunks.push(new_chunk);
-
-            let remaining_size = version_file.size - remaining_budget;
-            let mut running_offset = remaining_budget;
-            // Do everything but the last one
-            while running_offset < remaining_size {
-                let chunk_size = CHUNK_SIZE.min(remaining_size);
-                let chunk = vec![(version_file.clone(), running_offset, chunk_size)];
-                if chunk_size == CHUNK_SIZE {
-                    chunks.push(chunk);
-                } else {
-                    current_chunk = chunk;
-                }
-                running_offset += chunk_size;
+                continue;
             }
 
-            continue;
-        } else {
-            let size = version_file.size;
-            current_chunk.push((version_file, 0, size));
-            current_size += size;
-        }
+            // Fill up current chunk
+            let remaining = CHUNK_SIZE - current_size;
+            current_chunk.push((version_file.clone(), 0, remaining));
+            chunks.push(std::mem::take(&mut current_chunk));
 
-        if current_size >= CHUNK_SIZE {
-            // Pop current and add, then reset
-            let new_chunk = std::mem::take(&mut current_chunk);
-            chunks.push(new_chunk);
+            // This is our offset in our current file
+            let mut offset = remaining;
+            while offset < version_file.size {
+                let length = CHUNK_SIZE.min(version_file.size - offset);
+                offset += length;
+                if length == CHUNK_SIZE {
+                    chunks.push(vec![(version_file.clone(), offset, length)]);
+                } else {
+                    current_chunk.push((version_file.clone(), offset, length));
+                }
+            }
         }
     }
+
     if !current_chunk.is_empty() {
         chunks.push(current_chunk);
     }
@@ -191,8 +183,9 @@ pub async fn generate_manifest_rusty<T: Fn(String), V: Fn(f32)>(
 
             send_log
                 .send(format!(
-                    "created chunk of size {} from {} files (index {})",
+                    "created chunk of size {} ({}b) from {} files (index {})",
                     format_size(chunk_length, BINARY),
+                    chunk_length,
                     chunk_data.files.len(),
                     index
                 ))
