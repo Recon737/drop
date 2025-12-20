@@ -56,7 +56,7 @@ pub async fn generate_manifest_rusty<T: Fn(String), V: Fn(f32)>(
     let required_single_file = backend.require_whole_files();
 
     let mut files = backend.list_files().await?;
-    files.sort_by(|a, b| a.size.cmp(&b.size));
+    files.sort_by(|a, b| b.size.cmp(&a.size));
     // Filepath to chunk data
     let mut chunks: Vec<Vec<(VersionFile, u64, u64)>> = Vec::new();
     let mut current_chunk: Vec<(VersionFile, u64, u64)> = Vec::new();
@@ -91,7 +91,7 @@ pub async fn generate_manifest_rusty<T: Fn(String), V: Fn(f32)>(
         for version_file in files {
             let current_size = current_chunk.iter().map(|v| v.2).sum::<u64>();
 
-            if version_file.size + current_size < CHUNK_SIZE + WIGGLE {
+            if version_file.size + current_size < CHUNK_SIZE {
                 let size = version_file.size;
                 current_chunk.push((version_file, 0, size));
 
@@ -101,18 +101,18 @@ pub async fn generate_manifest_rusty<T: Fn(String), V: Fn(f32)>(
             // Fill up current chunk
             let remaining = CHUNK_SIZE - current_size;
             current_chunk.push((version_file.clone(), 0, remaining));
-            chunks.push(std::mem::take(&mut current_chunk));
+            chunks.push(std::mem::replace(&mut current_chunk, Vec::new()));
 
             // This is our offset in our current file
             let mut offset = remaining;
             while offset < version_file.size {
                 let length = CHUNK_SIZE.min(version_file.size - offset);
-                offset += length;
                 if length == CHUNK_SIZE {
                     chunks.push(vec![(version_file.clone(), offset, length)]);
                 } else {
                     current_chunk.push((version_file.clone(), offset, length));
                 }
+                offset += length;
             }
         }
     }

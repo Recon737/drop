@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::{os::unix::fs::MetadataExt, path::PathBuf};
 
 use droplet_rs::manifest::generate_manifest_rusty;
 use serde_json::json;
@@ -6,18 +6,48 @@ use tokio::runtime::Handle;
 
 #[tokio::main]
 pub async fn main() {
+    let target_dir =
+        PathBuf::from("/home/decduck/.local/share/Steam/steamapps/common/BloonsTD6");
     let metrics = Handle::current().metrics();
     println!("using {} workers", metrics.num_workers());
     let manifest = generate_manifest_rusty(
-        &PathBuf::from("/home/decduck/.local/share/Steam/steamapps/common/Savage Resurrection"),
-        |progress| {
-            println!("PROGRESS: {}", progress)
-        },
+        &target_dir,
+        |progress| println!("PROGRESS: {}", progress),
         |message| {
             println!("{}", message);
         },
     )
     .await
     .unwrap();
-    tokio::fs::write("./manifst.json", json!(manifest).to_string()).await.expect("failed to write manifest");
+
+    // Sanity checks
+    for (_, chunk_data) in manifest.chunks {
+        for file in chunk_data.files {
+            let path = target_dir.join(file.filename);
+            if !path.exists() {
+                panic!("{} doesn't exist", path.display());
+            }
+
+            let metadata = path.metadata().expect("failed to fetch metadata");
+            let file_size = metadata.size();
+            if file.start > file_size as usize {
+                panic!(
+                    "start for {} doesn't make sense: start: {}, size: {}",
+                    path.display(),
+                    file.start,
+                    file_size
+                );
+            }
+
+            let end_position = file.start + file.length;
+            if end_position > file_size as usize {
+                panic!(
+                    "end for {} doesn't make sense: end: {}, size: {}",
+                    path.display(),
+                    end_position,
+                    file_size
+                );
+            }
+        }
+    }
 }
