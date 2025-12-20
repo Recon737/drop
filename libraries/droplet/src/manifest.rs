@@ -41,7 +41,7 @@ pub struct Manifest {
 }
 
 const CHUNK_SIZE: u64 = 1024 * 1024 * 64;
-const WIGGLE: u64 = 1024 * 1024;
+const MAX_FILE_COUNT: usize = 512;
 
 use crate::versions::{create_backend_constructor, types::VersionFile};
 
@@ -85,10 +85,18 @@ pub async fn generate_manifest_rusty<T: Fn(String), V: Fn(f32)>(
                 chunks.push(new_chunk);
             }
 
+            if current_chunk.len() >= MAX_FILE_COUNT {
+                chunks.push(std::mem::take(&mut current_chunk));
+            }
+
             continue;
         }
     } else {
         for version_file in files {
+            if current_chunk.len() >= MAX_FILE_COUNT {
+                chunks.push(std::mem::take(&mut current_chunk));
+            }
+
             let current_size = current_chunk.iter().map(|v| v.2).sum::<u64>();
 
             if version_file.size + current_size < CHUNK_SIZE {
