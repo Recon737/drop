@@ -11,7 +11,7 @@
         leave-to="opacity-0"
       >
         <div
-          class="fixed inset-0 bg-zinc-950 bg-opacity-75 transition-opacity"
+          class="fixed inset-0 bg-zinc-950/75 transition-opacity"
         />
       </TransitionChild>
 
