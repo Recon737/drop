@@ -1,40 +1,35 @@
-use std::{env, path::PathBuf};
+use std::{env, path::PathBuf, sync::LazyLock};
 
+use anyhow::Result;
+use clap::Parser;
 use droplet_rs::manifest::generate_manifest_rusty;
 use indicatif::{ProgressBar, ProgressStyle};
 use tokio::runtime::Handle;
 
+use crate::{cli::{Cli, Commands}, commands::configure::interactive_configure};
+
+mod cli;
+mod commands;
+
+pub static CLI: LazyLock<Cli> = LazyLock::new(|| Cli::parse());
+
 #[tokio::main]
-async fn main() {
-    let threads = Handle::current().metrics().num_workers();
-    println!("using {} workers", threads);
-    let args: Vec<String> = env::args().collect();
-    let path = &args[1];
+async fn main() -> Result<()> {
 
-    let path = PathBuf::from(path);
-    if !path.exists() {
-        panic!("{} does not exist", path.display());
-    }
-
-    println!("using path {}", path.display());
-
-    let progress_bar = ProgressBar::new(100_00).with_style(
-        ProgressStyle::template(
-            ProgressStyle::default_bar(),
-            "[{elapsed_precise}] [ETA {eta}] {wide_bar} {percent_precise}%",
-        )
-        .unwrap(),
-    );
-    let manifest = generate_manifest_rusty(
-        &path,
-        |progress| {
-            let progress_int = (progress * 100.0f32).round() as u64;
-            progress_bar.set_position(progress_int);
+    match &CLI.command {
+        Commands::Configure { url, token } => {
+            if let Some(token) = token {
+                todo!()
+            } else {
+                interactive_configure(url.to_string()).await?;
+            }
         },
-        |log| {
-            progress_bar.println(log);
-        },
-    )
-    .await
-    .expect("failed to generate manifest");
+        Commands::Upload {
+            path,
+            game_id,
+            version_id,
+        } => todo!(),
+    };
+
+    Ok(())
 }
