@@ -1,4 +1,6 @@
-use clap::{Parser, Subcommand};
+use std::path::PathBuf;
+
+use clap::{Args, Parser, Subcommand, ValueEnum};
 
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
@@ -19,15 +21,28 @@ pub enum Commands {
         url: String,
         /// API token for non-interactive configuration.
         #[arg(short, long)]
-        token: Option<String>
+        token: Option<String>,
     },
     /// Uploads new game version to depot
-    Upload {
-        /// Path of new version
-        path: bool,
-        /// ID of game to attach to
-        game_id: String,
-        /// Version ID to attach to
-        version_id: String,
-    },
+    Upload(UploadInfo),
+}
+#[derive(Args)]
+pub struct UploadInfo {
+    /// Sets
+    pub upload_style: UploadStyle,
+    /// Path of new version
+    #[arg(short, long)]
+    pub path: PathBuf,
+    /// ID of game to attach to
+    #[arg(short, long)]
+    pub game_id: String,
+    /// Version ID to attach to
+    #[arg(short, long)]
+    pub version_id: String,
+}
+
+#[derive(ValueEnum, Copy, Clone, Debug, PartialEq, Eq)]
+pub enum UploadStyle {
+    S3,
+    Nginx,
 }

@@ -67,8 +67,6 @@ pub async fn validate_configuration(url: String, token: String) -> Result<()> {
         }
     }
 
-    
-
     Ok(())
 }
 
