@@ -28,9 +28,9 @@ pub enum Commands {
 }
 #[derive(Args)]
 pub struct UploadInfo {
-    /// Sets
+    /// Identifies the specific upload style that will be used for the set depot
     pub upload_style: UploadStyle,
-    /// Path of new version
+    /// Relative path to new version files
     #[arg(short, long)]
     pub path: PathBuf,
     /// ID of game to attach to
@@ -44,5 +44,4 @@ pub struct UploadInfo {
 #[derive(ValueEnum, Copy, Clone, Debug, PartialEq, Eq)]
 pub enum UploadStyle {
     S3,
-    Nginx,
 }

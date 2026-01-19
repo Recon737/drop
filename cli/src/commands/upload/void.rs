@@ -1,11 +1,13 @@
+use async_trait::async_trait;
 use droplet_rs::manifest::{ChunkData, Manifest};
 use log::warn;
 
 use crate::commands::upload::uploadable::Uploadable;
 
 pub struct VoidUploadable;
+#[async_trait]
 impl Uploadable for VoidUploadable {
-    fn upload_chunk(
+    async fn upload_chunk(
         &mut self,
         _id: &String,
         _version: &String,
@@ -16,12 +18,12 @@ impl Uploadable for VoidUploadable {
         Ok(())
     }
 
-    fn upload_speedtest(&mut self, _game_id: &String, _version_id: &String) -> anyhow::Result<()> {
+    async fn upload_speedtest(&mut self) -> anyhow::Result<()> {
         warn!("Uploading speedtest to VoidUploader");
         Ok(())
     }
 
-    fn upload_manifest(
+    async fn upload_manifest(
         &mut self,
         _manifest: Manifest,
         _game_id: &String,

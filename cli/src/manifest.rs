@@ -1,6 +1,4 @@
 use std::{
-    fs,
-    io::{Read, Seek},
     path::Path,
 };
 
