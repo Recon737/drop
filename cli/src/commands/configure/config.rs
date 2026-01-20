@@ -1,4 +1,4 @@
-use crate::commands::config::{config_option::ConfigOption, s3::S3Config};
+use crate::commands::configure::{config_option::ConfigOption, s3::S3Config};
 use log::warn;
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, fs};

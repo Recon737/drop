@@ -1,5 +1,5 @@
 use crate::{
-    commands::config::s3::S3Config,
+    commands::configure::s3::S3Config,
     commands::upload::{
         speedtest::{SPEEDTEST_PATH, Speedtest},
         uploadable::Uploadable,

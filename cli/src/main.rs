@@ -1,8 +1,8 @@
-use crate::commands::config::config_option::ConfigOptionCli;
-use crate::commands::config::configure::Configurable;
+use crate::commands::configure::config_option::ConfigOptionCli;
+use crate::commands::configure::configure::Configurable;
 use crate::{
     cli::{Cli, Commands},
-    commands::config::config::Config,
+    commands::configure::config::Config,
     commands::upload,
 };
 use clap::Parser;

@@ -2,7 +2,7 @@ use std::path::Path;
 
 use crate::{
     cli::UploadInfo,
-    commands::config::config::Config,
+    commands::configure::config::Config,
     commands::upload::{s3::S3, uploadable::Uploadable},
     manifest::generate_manifest,
 };

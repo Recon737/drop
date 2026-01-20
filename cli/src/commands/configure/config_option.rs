@@ -1,7 +1,7 @@
 use clap::Subcommand;
 use serde::{Deserialize, Serialize};
 
-use crate::commands::config::{
+use crate::commands::configure::{
     s3::{S3Config, S3ConfigCli},
     server::{ServerConfig, ServerConfigCli},
 };

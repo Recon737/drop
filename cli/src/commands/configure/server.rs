@@ -7,7 +7,7 @@ use dialoguer::{Confirm, Input, theme::ColorfulTheme};
 use reqwest::Client;
 use url::Url;
 
-use crate::commands::config::{config_option::ConfigOption, configure::Configurable};
+use crate::commands::configure::{config_option::ConfigOption, configure::Configurable};
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct ServerConfig {
