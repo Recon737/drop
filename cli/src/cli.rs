@@ -1,8 +1,5 @@
-use std::path::PathBuf;
-
+use crate::config::config::ConfigOptionCli;
 use clap::{Args, Parser, Subcommand, ValueEnum};
-
-use crate::config::config::ConfigOption;
 
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
@@ -17,9 +14,13 @@ pub struct Cli {
 
 #[derive(Subcommand)]
 pub enum Commands {
-    /// Configures a new Drop server
-    #[command(subcommand)]
-    Configure(ConfigOption),
+    /// Configures downpour endpoints
+    Configure {
+        #[arg(short, long)]
+        name: String,
+        #[command(subcommand)]
+        option: ConfigOptionCli
+    },
     /// Uploads new game version to depot
     Upload(UploadInfo),
 }
@@ -29,8 +30,8 @@ pub struct UploadInfo {
     /// Identifies the specific upload style that will be used for the set depot
     pub upload_style: UploadStyle,
     /// Relative path to new version files
-    #[arg(short, long)]
-    pub path: PathBuf,
+    #[arg(short, long, default_value_t = String::from("."))]
+    pub path: String,
     /// ID of game to attach to
     #[arg(short, long)]
     pub game_id: String,

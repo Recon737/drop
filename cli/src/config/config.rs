@@ -1,20 +1,17 @@
-use std::{fs, str::FromStr};
-
-use clap::Subcommand;
-use dialoguer::{Input, theme::ColorfulTheme};
-use log::warn;
-use serde::{Deserialize, Serialize};
-
 use crate::config::{
     s3::{S3Config, S3ConfigCli},
     server::ServerConfig,
 };
+use clap::Subcommand;
+use log::warn;
+use serde::{Deserialize, Serialize};
+use std::{collections::HashMap, fs};
 
 const CONFIG_DIR: &str = "downpour/config.json";
 
 #[derive(Serialize, Deserialize)]
 pub struct Config {
-    items: Vec<ConfigItem>,
+    items: HashMap<String, ConfigOption>,
     active_s3: Option<String>,
 }
 impl Config {
@@ -23,6 +20,7 @@ impl Config {
         let save_path = dirs::config_dir()
             .expect("Apparently your home directory doesn't exist") // Should probably formalise that error
             .join(CONFIG_DIR);
+        fs::create_dir_all(save_path.parent().unwrap())?;
         fs::write(save_path, json)?;
         Ok(())
     }
@@ -36,29 +34,30 @@ impl Config {
             Config::new()
         }
     }
-    pub fn add_item(&mut self, item: ConfigItem) {
-        if matches!(item.config_option, ConfigOption::S3(..)) {
-            self.active_s3 = Some(item.name.clone())
+    pub fn add_item(&mut self, name: String, object: ConfigOption) {
+        if matches!(object, ConfigOption::S3(..)) {
+            self.active_s3 = Some(name.clone())
         }
-        self.items.push(item);
+        self.items.insert(name, object);
+        self.save().expect("Failed to save config");
     }
 }
 
-#[derive(Serialize, Deserialize)]
-pub struct ConfigItem {
-    name: String,
-    config_option: ConfigOption,
-}
-#[derive(Subcommand, Serialize, Deserialize)]
-pub enum ConfigOption {
+#[derive(Subcommand, Clone)]
+pub enum ConfigOptionCli {
     Server(ServerConfig),
     S3(S3ConfigCli),
+}
+#[derive(Serialize, Deserialize, Clone)]
+pub enum ConfigOption {
+    Server(ServerConfig),
+    S3(S3Config),
 }
 
 impl Config {
     pub fn new() -> Self {
         Self {
-            items: Vec::new(),
+            items: HashMap::new(),
             active_s3: None,
         }
     }
@@ -66,12 +65,12 @@ impl Config {
         if let Some(active_s3) = &self.active_s3 {
             self.items
                 .iter()
-                .filter_map(|item| {
-                    if item.name == *active_s3 {
-                        match &item.config_option {
+                .filter_map(|(name, option)| {
+                    if *name == *active_s3 {
+                        match option {
                             ConfigOption::S3(s3_config) => Some(s3_config),
                             _ => {
-                                warn!("Name {} is not of type 'S3'", item.name);
+                                warn!("Name {} is not of type 'S3'", name);
                                 None
                             }
                         }
@@ -87,4 +86,3 @@ impl Config {
         }
     }
 }
-

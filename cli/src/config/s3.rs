@@ -1,11 +1,10 @@
 use std::str::FromStr;
 
 use clap::Args;
-use dialoguer::{Input, theme::ColorfulTheme};
 use s3::{Bucket, Region, creds::Credentials};
 use serde::{Deserialize, Serialize};
 
-use crate::{config::configurable::Configurable, interactive_optional_variable, interactive_variable};
+use crate::{config::configure::Configurable, interactive_optional_variable, interactive_variable};
 
 
 #[derive(Serialize, Deserialize, Args, Clone)]
@@ -17,14 +16,16 @@ pub struct S3ConfigCli {
     endpoint: Option<String>,
 }
 
-impl From<S3ConfigCli> for S3Config {
-    fn from(value: S3ConfigCli) -> Self {
-        interactive_variable!(value, secret_key, "S3 Secret Key");
-        interactive_variable!(value, key_id, "S3 Key ID");
-        interactive_variable!(value, region, "S3 Region");
-        interactive_variable!(value, bucket_name, "S3 Bucket Name");
-        interactive_optional_variable!(value, endpoint, "S3 Endpoint (leave blank for none");
-        Self {
+impl Configurable for S3ConfigCli {
+    type Out = S3Config;
+
+    fn configure(self) -> Self::Out {
+        interactive_variable!(self, secret_key, "S3 Secret Key");
+        interactive_variable!(self, key_id, "S3 Key ID");
+        interactive_variable!(self, region, "S3 Region");
+        interactive_variable!(self, bucket_name, "S3 Bucket Name");
+        interactive_optional_variable!(self, endpoint, "S3 Endpoint (leave blank for none");
+        Self::Out {
             secret_key,
             key_id,
             region,
@@ -34,9 +35,7 @@ impl From<S3ConfigCli> for S3Config {
     }
 }
 
-
-
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct S3Config {
     secret_key: String,
     key_id: String,
@@ -62,11 +61,5 @@ impl S3Config {
         let bucket = Bucket::new(&self.bucket_name, region, credentials)?;
 
         Ok(*bucket)
-    }
-}
-
-impl Configurable for S3Config {
-    fn configure(&self, config: &mut super::config::Config) {
-        println!("Configuring S3Config with {:?}", self);
     }
 }
