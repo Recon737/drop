@@ -1,6 +1,11 @@
 use crate::{
     cli::{Cli, Commands},
-    commands::{configure::interactive_configure, upload}, config::Config,
+    commands::{configure::interactive_configure, upload},
+    config::{
+        config::{Config, ConfigOption},
+        configurable::Configurable,
+        s3::S3Config,
+    },
 };
 use clap::Parser;
 use fern::colors::{Color, ColoredLevelConfig};
@@ -13,23 +18,33 @@ mod commands;
 mod config;
 mod manifest;
 
+#[macro_use]
+pub mod interactive;
+
+
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     configure_logging()?;
     let cli = Cli::parse();
-    let config = Config::new();
+    let mut config = Config::read();
     match &cli.command {
-        Commands::Configure { url, token } => {
-            if let Some(token) = token {
-            } else {
-                interactive_configure(url.to_string()).await?;
-            }
+        Commands::Configure(options) => {
+            configure_command(&mut config, options).await?;
         }
         Commands::Upload(info) => {
             upload::interface::upload(info, config).await?;
         }
     };
 
+    Ok(())
+}
+
+async fn configure_command(config: &mut Config, options: &ConfigOption) -> anyhow::Result<()> {
+    let configuration: Box<dyn Configurable> = match options {
+        ConfigOption::Server(options) => Box::new(options.clone()),
+        ConfigOption::S3(options) => Box::new(S3Config::from(options.clone())),
+    };
+    configuration.configure(config);
     Ok(())
 }
 

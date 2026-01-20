@@ -1,10 +1,7 @@
 use std::path::Path;
 
 use crate::{
-    cli::UploadInfo,
-    commands::upload::{s3::S3, uploadable::Uploadable},
-    config::Config,
-    manifest::generate_manifest,
+    cli::UploadInfo, commands::upload::{s3::S3, uploadable::Uploadable}, config::config::Config, manifest::generate_manifest
 };
 use log::info;
 
@@ -16,7 +13,7 @@ pub async fn upload(info: &UploadInfo, config: Config) -> anyhow::Result<()> {
     let manifest = generate_manifest(&Path::new(path)).await?;
     let mut uploader: Box<dyn Uploadable> = match info.upload_style {
         crate::cli::UploadStyle::S3 => Box::new(S3::new(
-            config
+            &config
                 .get_active_s3()
                 .ok_or(anyhow::Error::msg("Could not get active S3 value"))?,
         )?),

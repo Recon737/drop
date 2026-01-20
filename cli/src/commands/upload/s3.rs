@@ -2,12 +2,11 @@ use crate::{
     commands::upload::{
         speedtest::{SPEEDTEST_PATH, Speedtest},
         uploadable::Uploadable,
-    },
-    config::S3Config,
+    }, config::s3::S3Config,
 };
 use async_trait::async_trait;
 use droplet_rs::manifest::{ChunkData, Manifest};
-use s3::{Bucket, creds::Credentials};
+use s3::Bucket;
 use serde_json::json;
 use std::{ops::Deref, path::PathBuf};
 
