@@ -1,5 +1,4 @@
-use crate::commands::configure::config_option::ConfigOptionCli;
-use crate::commands::configure::configurable::Configurable;
+use crate::commands::configure::config::manage_configuration;
 use crate::{
     cli::{Cli, Commands},
     commands::configure::config::Config,
@@ -19,13 +18,9 @@ async fn main() -> anyhow::Result<()> {
 
     let mut config = Config::read();
     match &cli.command {
-        Commands::Configure { name, option } => config.add_item(
-            name.clone(),
-            match option {
-                ConfigOptionCli::Server(server_config) => server_config.clone().configure().await?,
-                ConfigOptionCli::S3(s3_config_cli) => s3_config_cli.clone().configure().await?,
-            },
-        ),
+        Commands::Configure { name, option } => {
+            manage_configuration(&mut config, name, option).await?
+        }
         Commands::Upload(info) => {
             upload::interface::upload(info, config).await?;
         }

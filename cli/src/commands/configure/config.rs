@@ -1,4 +1,9 @@
-use crate::commands::configure::{config_option::ConfigOption, s3::S3Config};
+use crate::commands::configure::{
+    config_option::{ConfigOption, ConfigOptionCli},
+    configurable::Configurable,
+    s3::S3Config,
+};
+use dialoguer::{Confirm, theme::ColorfulTheme};
 use log::warn;
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, fs};
@@ -16,6 +21,9 @@ impl Config {
             items: HashMap::new(),
             active_s3: None,
         }
+    }
+    pub fn exists(&self, name: &String) -> bool {
+        self.items.contains_key(name)
     }
     pub fn save(&self) -> anyhow::Result<()> {
         let json = serde_json::to_string(self)?;
@@ -68,4 +76,30 @@ impl Config {
             None
         }
     }
+}
+
+pub async fn manage_configuration(
+    config: &mut Config,
+    name: &String,
+    option: &ConfigOptionCli,
+) -> anyhow::Result<()> {
+    if config.exists(&name) {
+        let confirm = Confirm::with_theme(&ColorfulTheme::default())
+            .with_prompt(format!(
+                "An entry already exists with the name \"{}\". Would you like to overwrite it?",
+                &name
+            ))
+            .interact()?;
+        if !confirm {
+            return Err(anyhow::anyhow!("User cancelled action"));
+        }
+    }
+    config.add_item(
+        name.clone(),
+        match option {
+            ConfigOptionCli::Server(server_config) => server_config.clone().configure().await?,
+            ConfigOptionCli::S3(s3_config_cli) => s3_config_cli.clone().configure().await?,
+        },
+    );
+    Ok(())
 }
