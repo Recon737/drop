@@ -1,5 +1,5 @@
 use crate::commands::configure::config_option::ConfigOptionCli;
-use crate::commands::configure::configure::Configurable;
+use crate::commands::configure::configurable::Configurable;
 use crate::{
     cli::{Cli, Commands},
     commands::configure::config::Config,

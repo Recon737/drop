@@ -1,5 +1,5 @@
 pub mod config;
-pub mod configure;
+pub mod configurable;
 pub mod s3;
 pub mod server;
 #[macro_use]

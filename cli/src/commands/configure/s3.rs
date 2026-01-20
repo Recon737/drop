@@ -5,7 +5,7 @@ use s3::{Bucket, Region, creds::Credentials};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    commands::configure::{config_option::ConfigOption, configure::Configurable},
+    commands::configure::{config_option::ConfigOption, configurable::Configurable},
     interactive_optional_variable, interactive_variable,
 };
 
