@@ -1,5 +1,6 @@
-use crate::config::config::ConfigOptionCli;
 use clap::{Args, Parser, Subcommand, ValueEnum};
+
+use crate::commands::config::config_option::ConfigOptionCli;
 
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
@@ -19,7 +20,7 @@ pub enum Commands {
         #[arg(short, long)]
         name: String,
         #[command(subcommand)]
-        option: ConfigOptionCli
+        option: ConfigOptionCli,
     },
     /// Uploads new game version to depot
     Upload(UploadInfo),

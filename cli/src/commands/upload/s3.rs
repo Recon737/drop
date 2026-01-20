@@ -1,8 +1,9 @@
 use crate::{
+    commands::config::s3::S3Config,
     commands::upload::{
         speedtest::{SPEEDTEST_PATH, Speedtest},
         uploadable::Uploadable,
-    }, config::s3::S3Config,
+    },
 };
 use async_trait::async_trait;
 use droplet_rs::manifest::{ChunkData, Manifest};

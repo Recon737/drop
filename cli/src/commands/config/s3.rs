@@ -4,35 +4,18 @@ use clap::Args;
 use s3::{Bucket, Region, creds::Credentials};
 use serde::{Deserialize, Serialize};
 
-use crate::{config::configure::Configurable, interactive_optional_variable, interactive_variable};
+use crate::{
+    commands::config::{config_option::ConfigOption, configure::Configurable},
+    interactive_optional_variable, interactive_variable,
+};
 
-
-#[derive(Serialize, Deserialize, Args, Clone)]
+#[derive(Args, Clone)]
 pub struct S3ConfigCli {
     secret_key: Option<String>,
     key_id: Option<String>,
     region: Option<String>,
     bucket_name: Option<String>,
     endpoint: Option<String>,
-}
-
-impl Configurable for S3ConfigCli {
-    type Out = S3Config;
-
-    fn configure(self) -> Self::Out {
-        interactive_variable!(self, secret_key, "S3 Secret Key");
-        interactive_variable!(self, key_id, "S3 Key ID");
-        interactive_variable!(self, region, "S3 Region");
-        interactive_variable!(self, bucket_name, "S3 Bucket Name");
-        interactive_optional_variable!(self, endpoint, "S3 Endpoint (leave blank for none");
-        Self::Out {
-            secret_key,
-            key_id,
-            region,
-            bucket_name,
-            endpoint,
-        }
-    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -42,6 +25,23 @@ pub struct S3Config {
     region: String,
     bucket_name: String,
     endpoint: Option<String>,
+}
+
+impl Configurable for S3ConfigCli {
+    async fn configure(self) -> anyhow::Result<ConfigOption> {
+        interactive_variable!(self, secret_key, "S3 Secret Key");
+        interactive_variable!(self, key_id, "S3 Key ID");
+        interactive_variable!(self, region, "S3 Region");
+        interactive_variable!(self, bucket_name, "S3 Bucket Name");
+        interactive_optional_variable!(self, endpoint, "S3 Endpoint (leave blank for none");
+        Ok(ConfigOption::S3(S3Config {
+            secret_key,
+            key_id,
+            region,
+            bucket_name,
+            endpoint,
+        }))
+    }
 }
 
 impl S3Config {

@@ -1,13 +1,13 @@
-use crate::config::configure::Configurable;
+use crate::commands::config::config_option::ConfigOptionCli;
+use crate::commands::config::configure::Configurable;
 use crate::{
     cli::{Cli, Commands},
+    commands::config::config::Config,
     commands::upload,
-    config::config::Config,
 };
 use clap::Parser;
 mod cli;
 mod commands;
-mod config;
 mod logging;
 mod manifest;
 
@@ -19,13 +19,13 @@ async fn main() -> anyhow::Result<()> {
 
     let mut config = Config::read();
     match &cli.command {
-        Commands::Configure { name, option } => match option {
-            config::config::ConfigOptionCli::Server(server_config) => todo!(),
-            config::config::ConfigOptionCli::S3(s3_config_cli) => config.add_item(
-                name.clone(),
-                config::config::ConfigOption::S3(s3_config_cli.clone().configure()),
-            ),
-        },
+        Commands::Configure { name, option } => config.add_item(
+            name.clone(),
+            match option {
+                ConfigOptionCli::Server(server_config) => server_config.clone().configure().await?,
+                ConfigOptionCli::S3(s3_config_cli) => s3_config_cli.clone().configure().await?,
+            },
+        ),
         Commands::Upload(info) => {
             upload::interface::upload(info, config).await?;
         }

@@ -4,7 +4,6 @@ use std::env;
 use std::fs;
 use std::io;
 
-
 pub fn configure_logging() -> anyhow::Result<()> {
     let log_level = env::var("RUST_LOG")
         .unwrap_or_else(|_| "info".to_string())

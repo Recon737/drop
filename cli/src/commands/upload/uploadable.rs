@@ -11,5 +11,10 @@ pub trait Uploadable {
         chunk: &ChunkData,
     ) -> anyhow::Result<()>;
     async fn upload_speedtest(&mut self) -> anyhow::Result<()>;
-    async fn upload_manifest(&mut self, manifest: Manifest, game_id: &String, version_id: &String) -> anyhow::Result<()>;
+    async fn upload_manifest(
+        &mut self,
+        manifest: Manifest,
+        game_id: &String,
+        version_id: &String,
+    ) -> anyhow::Result<()>;
 }

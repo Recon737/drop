@@ -1,6 +1,4 @@
-use std::{
-    path::Path,
-};
+use std::path::Path;
 
 use droplet_rs::manifest::{Manifest, generate_manifest_rusty};
 use indicatif::{ProgressBar, ProgressStyle};

@@ -1,8 +1,4 @@
-use crate::config::{
-    s3::{S3Config, S3ConfigCli},
-    server::ServerConfig,
-};
-use clap::Subcommand;
+use crate::commands::config::{config_option::ConfigOption, s3::S3Config};
 use log::warn;
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, fs};
@@ -15,6 +11,12 @@ pub struct Config {
     active_s3: Option<String>,
 }
 impl Config {
+    pub fn new() -> Self {
+        Self {
+            items: HashMap::new(),
+            active_s3: None,
+        }
+    }
     pub fn save(&self) -> anyhow::Result<()> {
         let json = serde_json::to_string(self)?;
         let save_path = dirs::config_dir()
@@ -41,26 +43,7 @@ impl Config {
         self.items.insert(name, object);
         self.save().expect("Failed to save config");
     }
-}
 
-#[derive(Subcommand, Clone)]
-pub enum ConfigOptionCli {
-    Server(ServerConfig),
-    S3(S3ConfigCli),
-}
-#[derive(Serialize, Deserialize, Clone)]
-pub enum ConfigOption {
-    Server(ServerConfig),
-    S3(S3Config),
-}
-
-impl Config {
-    pub fn new() -> Self {
-        Self {
-            items: HashMap::new(),
-            active_s3: None,
-        }
-    }
     pub fn get_active_s3(&self) -> Option<S3Config> {
         if let Some(active_s3) = &self.active_s3 {
             self.items

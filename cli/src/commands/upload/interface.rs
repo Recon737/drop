@@ -1,7 +1,10 @@
 use std::path::Path;
 
 use crate::{
-    cli::UploadInfo, commands::upload::{s3::S3, uploadable::Uploadable}, config::config::Config, manifest::generate_manifest
+    cli::UploadInfo,
+    commands::config::config::Config,
+    commands::upload::{s3::S3, uploadable::Uploadable},
+    manifest::generate_manifest,
 };
 use log::info;
 

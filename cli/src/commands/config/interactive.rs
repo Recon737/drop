@@ -8,7 +8,7 @@ macro_rules! interactive_variable {
         let $var = if let Some($var) = $value.$var {
             $var
         } else {
-            crate::config::interactive::query_variable($prompt).unwrap()
+            crate::commands::config::interactive::query_variable($prompt).unwrap()
         };
     };
 }
@@ -18,7 +18,7 @@ macro_rules! interactive_optional_variable {
         let $var = if let Some($var) = $value.$var {
             Some($var)
         } else {
-            crate::config::interactive::query_optional_variable($prompt).unwrap()
+            crate::commands::config::interactive::query_optional_variable($prompt).unwrap()
         };
     };
 }
