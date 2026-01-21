@@ -41,10 +41,10 @@
           buildInputs = libraries;
 
           shellHook = ''
-            echo "Drop-OSS app development environment loaded."
             export LD_LIBRARY_PATH="${
               pkgs.lib.makeLibraryPath libraries
             }:$LD_LIBRARY_PATH"
+          echo "Downpour development environment loaded"
           '';
         };
       }
