@@ -1,15 +1,16 @@
-use std::{os::unix::fs::MetadataExt, path::PathBuf};
+use std::{env, os::unix::fs::MetadataExt, path::PathBuf};
 
 use droplet_rs::manifest::generate_manifest_rusty;
-use serde_json::json;
 use tokio::runtime::Handle;
 
 #[tokio::main]
 pub async fn main() {
-    let target_dir =
-        PathBuf::from("/home/decduck/.local/share/Steam/steamapps/common/BloonsTD6");
+    let mut args = env::args();
+    let target_dir = PathBuf::from(args.nth(1).expect("Provide target directory"));
+
     let metrics = Handle::current().metrics();
     println!("using {} workers", metrics.num_workers());
+
     let manifest = generate_manifest_rusty(
         &target_dir,
         |progress| println!("PROGRESS: {}", progress),
