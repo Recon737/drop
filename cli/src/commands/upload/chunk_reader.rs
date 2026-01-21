@@ -3,7 +3,9 @@ use std::{
     cmp::min,
     fs::File,
     io::{Read, Seek, SeekFrom},
-    task::Poll, vec::IntoIter,
+    path::Path,
+    task::Poll,
+    vec::IntoIter,
 };
 use tokio::io::AsyncRead;
 
@@ -28,15 +30,20 @@ impl Read for LimitedFileReader {
 }
 
 impl ChunkReader {
-    pub fn new(chunk: &ChunkData) -> Self {
-        let files = chunk.files.iter().map(|f| {
-            let mut file = File::open(&f.filename).unwrap();
-            file.seek(SeekFrom::Start(f.start as u64)).unwrap(); // TODO: Fix unwraps
-            LimitedFileReader {
-                file,
-                to_read_remaining: f.length,
-            }
-        }).collect::<Vec<LimitedFileReader>>().into_iter();
+    pub fn new(path: impl AsRef<Path>, chunk: &ChunkData) -> Self {
+        let files = chunk
+            .files
+            .iter()
+            .map(|f| {
+                let mut file = File::open(path.as_ref().join(&f.filename)).unwrap();
+                file.seek(SeekFrom::Start(f.start as u64)).unwrap(); // TODO: Fix unwraps
+                LimitedFileReader {
+                    file,
+                    to_read_remaining: f.length,
+                }
+            })
+            .collect::<Vec<LimitedFileReader>>()
+            .into_iter();
         Self {
             files: files,
             active: None,
@@ -57,7 +64,12 @@ impl AsyncRead for ChunkReader {
                         s.active = None;
                         continue;
                     }
-                    Ok(_) => return Poll::Ready(Ok(())),
+                    Ok(n) => {
+
+                        buf.advance(n);
+
+                        return Poll::Ready(Ok(()));
+                    }
                     Err(e) => return Poll::Ready(Err(e)),
                 }
             } else {
@@ -71,25 +83,25 @@ impl AsyncRead for ChunkReader {
     }
 }
 
-impl Read for ChunkReader {
-    fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
-        loop {
-            if let Some(active) = &mut self.active {
-                match active.read(buf) {
-                    Ok(0) => {
-                        self.active = None;
-                        continue;
-                    }
-                    Ok(n) => return Ok(n),
-                    Err(e) => return Err(e),
-                }
-            } else {
-                if let Some(next) = self.files.next() {
-                    self.active = Some(next);
-                } else {
-                    return Ok(0);
-                }
-            }
-        }
-    }
-}
+// impl Read for ChunkReader {
+//     fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+//         loop {
+//             if let Some(active) = &mut self.active {
+//                 match active.read(buf) {
+//                     Ok(0) => {
+//                         self.active = None;
+//                         continue;
+//                     }
+//                     Ok(n) => return Ok(n),
+//                     Err(e) => return Err(e),
+//                 }
+//             } else {
+//                 if let Some(next) = self.files.next() {
+//                     self.active = Some(next);
+//                 } else {
+//                     return Ok(0);
+//                 }
+//             }
+//         }
+//     }
+// }

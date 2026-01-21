@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use async_trait::async_trait;
 use droplet_rs::manifest::{ChunkData, Manifest};
 
@@ -5,6 +7,7 @@ use droplet_rs::manifest::{ChunkData, Manifest};
 pub trait Uploadable {
     async fn upload_chunk(
         &mut self,
+        base_path: PathBuf,
         id: &String,
         version: &String,
         chunk_id: &String,

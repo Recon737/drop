@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use crate::{
     cli::UploadInfo,
@@ -24,7 +24,7 @@ pub async fn upload(info: &UploadInfo, config: Config) -> anyhow::Result<()> {
     info!("Uploading chunks");
     for (id, data) in &manifest.chunks {
         info!("Uploading chunk id {id}");
-        uploader.upload_chunk(game_id, version_id, id, data).await?;
+        uploader.upload_chunk(PathBuf::from(path), game_id, version_id, id, data).await?;
     }
     info!("Finished uploading chunks");
 
