@@ -1,29 +1,32 @@
-use crate::commands::configure::{
+use crate::{commands::{connect::{
     config_option::{ConfigOption, ConfigOptionCli},
-    configurable::Configurable,
+    configurable::Configure,
     s3::S3Config,
-};
+}, upload::speedtest::Speedtest}, manifest::DepotManifest};
 use dialoguer::{Confirm, theme::ColorfulTheme};
-use log::warn;
+use futures::AsyncWriteExt;
+use log::{debug, info, warn};
+use opendal::Operator;
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, fs};
+use tokio_util::compat::FuturesAsyncWriteCompatExt;
+use std::{collections::HashMap, fs, ops::Not};
 
 const CONFIG_DIR: &str = "downpour/config.json";
 
 #[derive(Serialize, Deserialize)]
 pub struct Config {
-    items: HashMap<String, ConfigOption>,
+    configurations: HashMap<String, ConfigOption>,
     active_s3: Option<String>,
 }
 impl Config {
     pub fn new() -> Self {
         Self {
-            items: HashMap::new(),
+            configurations: HashMap::new(),
             active_s3: None,
         }
     }
     pub fn exists(&self, name: &String) -> bool {
-        self.items.contains_key(name)
+        self.configurations.contains_key(name)
     }
     pub fn save(&self) -> anyhow::Result<()> {
         let json = serde_json::to_string(self)?;
@@ -48,13 +51,13 @@ impl Config {
         if matches!(object, ConfigOption::S3(..)) {
             self.active_s3 = Some(name.clone())
         }
-        self.items.insert(name, object);
+        self.configurations.insert(name, object);
         self.save().expect("Failed to save config");
     }
 
     pub fn get_active_s3(&self) -> Option<S3Config> {
         if let Some(active_s3) = &self.active_s3 {
-            self.items
+            self.configurations
                 .iter()
                 .filter_map(|(name, option)| {
                     if *name == *active_s3 {
@@ -76,6 +79,9 @@ impl Config {
             None
         }
     }
+    pub fn get<T: AsRef<String>>(&self, name: T) -> Option<&ConfigOption> {
+        self.configurations.get(name.as_ref())
+    }
 }
 
 pub async fn manage_configuration(
@@ -94,12 +100,37 @@ pub async fn manage_configuration(
             return Err(anyhow::anyhow!("User cancelled action"));
         }
     }
-    config.add_item(
-        name.clone(),
-        match option {
-            ConfigOptionCli::Server(server_config) => server_config.clone().configure().await?,
-            ConfigOptionCli::S3(s3_config_cli) => s3_config_cli.clone().configure().await?,
-        },
-    );
+    let config_option = match option {
+        ConfigOptionCli::S3(s3_config_cli) => s3_config_cli.clone().configure().await?,
+    };
+    config.add_item(name.clone(), config_option.clone());
+    let operator = config_option.build()?;
+
+    generate_speedtest(&operator).await?;
+    generate_manifest(&operator).await?;
+
+    Ok(())
+}
+
+async fn generate_speedtest(operator: &Operator) -> anyhow::Result<()> {
+    if operator.exists("speedtest").await?.not() {
+        info!("Speedtest already exists on Depot. Skipping speedtest upload...");
+        return Ok(())
+    }
+    let mut writer = operator.writer("speedtest").await?.into_futures_async_write().compat_write();
+    let mut reader = Speedtest::new();
+    let written = tokio::io::copy(&mut reader, &mut writer).await?;
+    debug!("Wrote {} bytes to {:?}", written, operator.info());
+    writer.into_inner().close().await?;
+    Ok(())
+}
+async fn generate_manifest(operator: &Operator) -> anyhow::Result<()> {
+    info!("Manifest already exists on Depot. Skipping manifest upload...");
+    if operator.exists("manifest.json").await?.not() {
+        return Ok(())
+    }
+    let data = DepotManifest::new();
+    operator.write("manifest.json", serde_json::to_string(&data)?).await?;
+
     Ok(())
 }

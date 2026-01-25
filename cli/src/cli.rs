@@ -1,6 +1,6 @@
 use clap::{Args, Parser, Subcommand, ValueEnum};
 
-use crate::commands::configure::config_option::ConfigOptionCli;
+use crate::commands::connect::config_option::ConfigOptionCli;
 
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
@@ -16,7 +16,7 @@ pub struct Cli {
 #[derive(Subcommand)]
 pub enum Commands {
     /// Configures downpour endpoints
-    Configure {
+    Connect {
         #[arg(short, long)]
         name: String,
         #[command(subcommand)]

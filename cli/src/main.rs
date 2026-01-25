@@ -1,7 +1,7 @@
-use crate::commands::configure::config::manage_configuration;
+use crate::commands::connect::config::manage_configuration;
 use crate::{
     cli::{Cli, Commands},
-    commands::configure::config::Config,
+    commands::connect::config::Config,
     commands::upload,
 };
 use clap::Parser;
@@ -18,7 +18,7 @@ async fn main() -> anyhow::Result<()> {
 
     let mut config = Config::read();
     match &cli.command {
-        Commands::Configure { name, option } => {
+        Commands::Connect { name, option } => {
             manage_configuration(&mut config, name, option).await?
         }
         Commands::Upload(info) => {

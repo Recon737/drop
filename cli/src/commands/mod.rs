@@ -1,2 +1,2 @@
-pub mod configure;
+pub mod connect;
 pub mod upload;
