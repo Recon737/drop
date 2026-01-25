@@ -4,7 +4,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     commands::connect::{config_option::ConfigOption, configurable::Configure},
-    interactive_variable, operator_builder::OperatorBuilder,
+    interactive_variable,
+    operator_builder::OperatorBuilder,
 };
 
 #[derive(Args, Clone)]
@@ -28,12 +29,15 @@ pub struct S3Config {
 }
 
 impl Configure for S3ConfigCli {
-    async fn configure(self) -> anyhow::Result<ConfigOption> {
+    async fn configure(self, name: &mut Option<String>) -> anyhow::Result<ConfigOption> {
         interactive_variable!(self, key_id, "S3 Key ID");
         interactive_variable!(self, secret_key, "S3 Secret Key");
         interactive_variable!(self, region, "S3 Region");
         interactive_variable!(self, bucket_name, "S3 Bucket Name");
         interactive_variable!(self, endpoint, "S3 Endpoint");
+        if let None = name {
+            *name = Some(endpoint.clone());
+        }
         Ok(ConfigOption::S3(S3Config {
             secret_key,
             key_id,

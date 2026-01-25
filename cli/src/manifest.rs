@@ -37,13 +37,13 @@ impl DepotManifest {
     }
 }
 
-pub async fn generate_manifest(dir: &Path) -> anyhow::Result<Manifest> {
+pub async fn generate_v2_manifest(dir: &Path) -> anyhow::Result<Manifest> {
     let progress_bar = ProgressBar::new(10_000).with_style(
         ProgressStyle::default_bar()
             .template("[{elapsed_precise}] [ETA {eta}] {bar} {percent_precise}%")
             .unwrap(),
     );
-    
+
     generate_manifest_rusty(
         dir,
         |progress| {

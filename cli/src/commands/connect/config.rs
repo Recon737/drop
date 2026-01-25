@@ -1,18 +1,15 @@
 use crate::{
-    commands::{
-        connect::{
-            config_option::{ConfigOption, ConfigOptionCli},
-            configurable::Configure,
-            s3::S3Config,
-            speedtest::{SPEEDTEST_PATH, Speedtest}
-        },
+    commands::connect::{
+        config_option::{ConfigOption, ConfigOptionCli},
+        configurable::Configure,
+        speedtest::{SPEEDTEST_PATH, Speedtest},
     },
     manifest::DepotManifest,
 };
 use dialoguer::{Confirm, theme::ColorfulTheme};
 use futures::AsyncWriteExt;
 use indicatif::{ProgressBar, ProgressStyle};
-use log::{debug, info, warn};
+use log::{debug, info};
 use opendal::Operator;
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, fs, ops::Not};
@@ -23,13 +20,13 @@ const CONFIG_DIR: &str = "downpour/config.json";
 #[derive(Serialize, Deserialize)]
 pub struct Config {
     configurations: HashMap<String, ConfigOption>,
-    active_s3: Option<String>,
+    active: Option<String>,
 }
 impl Config {
     pub fn new() -> Self {
         Self {
             configurations: HashMap::new(),
-            active_s3: None,
+            active: None,
         }
     }
     pub fn exists(&self, name: &String) -> bool {
@@ -48,7 +45,9 @@ impl Config {
         let save_path = dirs::config_dir()
             .expect("Apparently your home directory doesn't exist") // Should probably formalise that error
             .join(CONFIG_DIR);
-        if fs::exists(&save_path).unwrap_or_else(|_| panic!("Could not read save path {:#?}", &save_path)) {
+        if fs::exists(&save_path)
+            .unwrap_or_else(|_| panic!("Could not read save path {:#?}", &save_path))
+        {
             serde_json::from_str(&fs::read_to_string(save_path).unwrap()).unwrap()
         } else {
             Config::new()
@@ -56,50 +55,37 @@ impl Config {
     }
     pub fn add_item(&mut self, name: String, object: ConfigOption) {
         if matches!(object, ConfigOption::S3(..)) {
-            self.active_s3 = Some(name.clone())
+            self.active = Some(name.clone())
         }
         self.configurations.insert(name, object);
         self.save().expect("Failed to save config");
     }
 
-    pub fn get_active_s3(&self) -> Option<S3Config> {
-        if let Some(active_s3) = &self.active_s3 {
-            self.configurations
-                .iter()
-                .filter_map(|(name, option)| {
-                    if *name == *active_s3 {
-                        match option {
-                            ConfigOption::S3(s3_config) => Some(s3_config),
-                            _ => {
-                                warn!("Name {} is not of type 'S3'", name);
-                                None
-                            }
-                        }
-                    } else {
-                        None
-                    }
-                })
-                .next()
-                .cloned()
+    pub fn get_active(&self) -> Option<&ConfigOption> {
+        if let Some(active) = &self.active {
+            self.configurations.get(active)
         } else {
             None
         }
     }
-    pub fn get<T: AsRef<String>>(&self, name: T) -> Option<&ConfigOption> {
+    pub fn get<T: AsRef<str>>(&self, name: T) -> Option<&ConfigOption> {
         self.configurations.get(name.as_ref())
     }
 }
 
 pub async fn manage_configuration(
     config: &mut Config,
-    name: &String,
-    option: &ConfigOptionCli,
+    name: Option<String>,
+    option: ConfigOptionCli,
 ) -> anyhow::Result<()> {
-    if config.exists(name) {
+    let mut name = name;
+    if let Some(name) = &name
+        && config.exists(name)
+    {
         let confirm = Confirm::with_theme(&ColorfulTheme::default())
             .with_prompt(format!(
                 "An entry already exists with the name \"{}\". Would you like to overwrite it?",
-                &name
+                name
             ))
             .interact()?;
         if !confirm {
@@ -107,9 +93,10 @@ pub async fn manage_configuration(
         }
     }
     let config_option = match option {
-        ConfigOptionCli::S3(s3_config_cli) => s3_config_cli.clone().configure().await?,
+        ConfigOptionCli::S3(s3_config_cli) => s3_config_cli.clone().configure(&mut name).await?,
     };
-    config.add_item(name.clone(), config_option.clone());
+    let name = name.expect("Default name was not provided by ConfigOption. This is a bug");
+    config.add_item(name, config_option.clone());
     let operator = config_option.build()?;
 
     generate_manifest(&operator).await?;
@@ -138,14 +125,15 @@ async fn generate_speedtest(operator: &Operator) -> anyhow::Result<()> {
     );
 
     let mut reader = Speedtest::new(|progress| {
-            let progress_int = (progress * 100f32).round() as u64;
-            progress_bar.set_position(progress_int);
-        });
+        let progress_int = (progress * 100f32).round() as u64;
+        progress_bar.set_position(progress_int);
+    });
     let written = tokio::io::copy(&mut reader, &mut writer).await?;
     debug!("Wrote {} bytes to {:?}", written, operator.info());
     writer.into_inner().close().await?;
     Ok(())
 }
+
 async fn generate_manifest(operator: &Operator) -> anyhow::Result<()> {
     let lister = operator.list_with("manifest.json").limit(1).await?;
     if lister.is_empty().not() {

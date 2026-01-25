@@ -18,12 +18,13 @@ async fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
 
     let mut config = Config::read();
-    match &cli.command {
+    match cli.command {
         Commands::Connect { name, option } => {
             manage_configuration(&mut config, name, option).await?
         }
-        Commands::Upload(info) => {
-            upload::interface::upload(info, config).await?;
+        Commands::Upload { info, name } => {
+            let info = info.interactive_configure();
+            upload::interface::upload(&info, config, &name).await?;
         }
     };
 
