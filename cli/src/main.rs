@@ -9,6 +9,7 @@ mod cli;
 mod commands;
 mod logging;
 mod manifest;
+mod operator_builder;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {

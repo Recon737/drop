@@ -3,11 +3,8 @@ use opendal::Operator;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    commands::{
-        connect::{config_option::ConfigOption, configurable::Configure},
-        upload::uploadable::OperatorBuilder,
-    },
-    interactive_variable,
+    commands::connect::{config_option::ConfigOption, configurable::Configure},
+    interactive_variable, operator_builder::OperatorBuilder,
 };
 
 #[derive(Args, Clone)]

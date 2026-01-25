@@ -4,9 +4,9 @@ use crate::{
     cli::UploadInfo,
     commands::{
         connect::config::Config,
-        upload::{chunk_reader::ChunkReader, uploadable::OperatorBuilder},
+        upload::chunk_reader::ChunkReader,
     },
-    manifest::generate_manifest,
+    manifest::generate_manifest, operator_builder::OperatorBuilder,
 };
 use futures::AsyncWriteExt;
 use log::info;

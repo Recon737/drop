@@ -2,6 +2,7 @@ use std::{collections::HashMap, path::Path};
 
 use droplet_rs::manifest::{Manifest, generate_manifest_rusty};
 use indicatif::{ProgressBar, ProgressStyle};
+use log::info;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize)]
@@ -49,7 +50,7 @@ pub async fn generate_manifest(dir: &Path) -> anyhow::Result<Manifest> {
             let progress_int = (progress * 100f32).round() as u64;
             progress_bar.set_position(progress_int);
         },
-        |log| progress_bar.println(log),
+        |log| progress_bar.suspend(|| info!("{}", log)),
     )
     .await
 }

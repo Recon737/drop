@@ -2,10 +2,7 @@ use clap::Subcommand;
 use opendal::{Operator, layers::LoggingLayer};
 use serde::{Deserialize, Serialize};
 
-use crate::commands::{
-    connect::s3::{S3Config, S3ConfigCli},
-    upload::uploadable::OperatorBuilder,
-};
+use crate::{commands::connect::s3::{S3Config, S3ConfigCli}, operator_builder::OperatorBuilder};
 
 #[derive(Subcommand, Clone)]
 pub enum ConfigOptionCli {
@@ -18,6 +15,7 @@ pub enum ConfigOption {
 
 impl ConfigOption {
     pub fn build(&self) -> anyhow::Result<Operator> {
+
         Ok(match self {
             ConfigOption::S3(s3_config) => s3_config.build()?,
         }
