@@ -45,7 +45,7 @@ impl ChunkReader {
             .collect::<Vec<LimitedFileReader>>()
             .into_iter();
         Self {
-            files: files,
+            files,
             active: None,
         }
     }
@@ -65,7 +65,6 @@ impl AsyncRead for ChunkReader {
                         continue;
                     }
                     Ok(n) => {
-
                         buf.advance(n);
 
                         return Poll::Ready(Ok(()));

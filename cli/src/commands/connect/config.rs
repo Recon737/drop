@@ -1,15 +1,22 @@
-use crate::{commands::{connect::{
-    config_option::{ConfigOption, ConfigOptionCli},
-    configurable::Configure,
-    s3::S3Config,
-}, upload::speedtest::Speedtest}, manifest::DepotManifest};
+use crate::{
+    commands::{
+        connect::{
+            config_option::{ConfigOption, ConfigOptionCli},
+            configurable::Configure,
+            s3::S3Config,
+            speedtest::{SPEEDTEST_PATH, Speedtest}
+        },
+    },
+    manifest::DepotManifest,
+};
 use dialoguer::{Confirm, theme::ColorfulTheme};
 use futures::AsyncWriteExt;
+use indicatif::{ProgressBar, ProgressStyle};
 use log::{debug, info, warn};
 use opendal::Operator;
 use serde::{Deserialize, Serialize};
-use tokio_util::compat::FuturesAsyncWriteCompatExt;
 use std::{collections::HashMap, fs, ops::Not};
+use tokio_util::compat::FuturesAsyncWriteCompatExt;
 
 const CONFIG_DIR: &str = "downpour/config.json";
 
@@ -41,7 +48,7 @@ impl Config {
         let save_path = dirs::config_dir()
             .expect("Apparently your home directory doesn't exist") // Should probably formalise that error
             .join(CONFIG_DIR);
-        if fs::exists(&save_path).expect(&format!("Could not read save path {:#?}", &save_path)) {
+        if fs::exists(&save_path).unwrap_or_else(|_| panic!("Could not read save path {:#?}", &save_path)) {
             serde_json::from_str(&fs::read_to_string(save_path).unwrap()).unwrap()
         } else {
             Config::new()
@@ -74,7 +81,6 @@ impl Config {
                 })
                 .next()
                 .cloned()
-                .map(|c| c.into())
         } else {
             None
         }
@@ -89,7 +95,7 @@ pub async fn manage_configuration(
     name: &String,
     option: &ConfigOptionCli,
 ) -> anyhow::Result<()> {
-    if config.exists(&name) {
+    if config.exists(name) {
         let confirm = Confirm::with_theme(&ColorfulTheme::default())
             .with_prompt(format!(
                 "An entry already exists with the name \"{}\". Would you like to overwrite it?",
@@ -106,31 +112,50 @@ pub async fn manage_configuration(
     config.add_item(name.clone(), config_option.clone());
     let operator = config_option.build()?;
 
-    generate_speedtest(&operator).await?;
     generate_manifest(&operator).await?;
+    generate_speedtest(&operator).await?;
 
     Ok(())
 }
 
 async fn generate_speedtest(operator: &Operator) -> anyhow::Result<()> {
-    if operator.exists("speedtest").await?.not() {
+    // Workaround to operator.exists("...") also logging a 404 warning
+    let lister = operator.list_with(SPEEDTEST_PATH).limit(1).await?;
+    if lister.is_empty().not() {
         info!("Speedtest already exists on Depot. Skipping speedtest upload...");
-        return Ok(())
+        return Ok(());
     }
-    let mut writer = operator.writer("speedtest").await?.into_futures_async_write().compat_write();
-    let mut reader = Speedtest::new();
+    let mut writer = operator
+        .writer(SPEEDTEST_PATH)
+        .await?
+        .into_futures_async_write()
+        .compat_write();
+
+    let progress_bar = ProgressBar::new(10_000).with_style(
+        ProgressStyle::default_bar()
+            .template("[{elapsed_precise}] [ETA {eta}] {bar} {percent_precise}%")
+            .unwrap(),
+    );
+
+    let mut reader = Speedtest::new(|progress| {
+            let progress_int = (progress * 100f32).round() as u64;
+            progress_bar.set_position(progress_int);
+        });
     let written = tokio::io::copy(&mut reader, &mut writer).await?;
     debug!("Wrote {} bytes to {:?}", written, operator.info());
     writer.into_inner().close().await?;
     Ok(())
 }
 async fn generate_manifest(operator: &Operator) -> anyhow::Result<()> {
-    info!("Manifest already exists on Depot. Skipping manifest upload...");
-    if operator.exists("manifest.json").await?.not() {
-        return Ok(())
+    let lister = operator.list_with("manifest.json").limit(1).await?;
+    if lister.is_empty().not() {
+        info!("Manifest already exists on Depot. Skipping manifest upload...");
+        return Ok(());
     }
     let data = DepotManifest::new();
-    operator.write("manifest.json", serde_json::to_string(&data)?).await?;
+    operator
+        .write("manifest.json", serde_json::to_string(&data)?)
+        .await?;
 
     Ok(())
 }

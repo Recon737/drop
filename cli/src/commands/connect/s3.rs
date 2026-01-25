@@ -55,7 +55,7 @@ impl OperatorBuilder for S3Config {
             .secret_access_key(&self.secret_key)
             .region(&self.region)
             .endpoint(&self.endpoint)
-            .root(self.root.as_ref().map(|s| s.as_str()).unwrap_or("/"))
+            .root(self.root.as_deref().unwrap_or("/"))
             .bucket(&self.bucket_name)
             .disable_config_load();
 

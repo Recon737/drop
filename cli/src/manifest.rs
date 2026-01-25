@@ -25,7 +25,7 @@ impl DepotManifest {
             content: HashMap::new(),
         }
     }
-    pub fn add(&mut self, game_id: String, version_id: String, compression: CompressionOption) {
+    pub fn append(&mut self, game_id: String, version_id: String, compression: CompressionOption) {
         self.content.insert(
             game_id,
             DepotManifestGameData {
@@ -37,12 +37,13 @@ impl DepotManifest {
 }
 
 pub async fn generate_manifest(dir: &Path) -> anyhow::Result<Manifest> {
-    let progress_bar = ProgressBar::new(100_00).with_style(
+    let progress_bar = ProgressBar::new(10_000).with_style(
         ProgressStyle::default_bar()
             .template("[{elapsed_precise}] [ETA {eta}] {bar} {percent_precise}%")
             .unwrap(),
     );
-    let res = generate_manifest_rusty(
+    
+    generate_manifest_rusty(
         dir,
         |progress| {
             let progress_int = (progress * 100f32).round() as u64;
@@ -50,6 +51,5 @@ pub async fn generate_manifest(dir: &Path) -> anyhow::Result<Manifest> {
         },
         |log| progress_bar.println(log),
     )
-    .await;
-    res
+    .await
 }

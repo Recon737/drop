@@ -8,7 +8,7 @@ macro_rules! interactive_variable {
         let $var = if let Some($var) = $value.$var {
             $var
         } else {
-            crate::commands::connect::interactive::query_variable($prompt).unwrap()
+            $crate::commands::connect::interactive::query_variable($prompt).unwrap()
         };
     };
 }
@@ -18,7 +18,7 @@ macro_rules! interactive_optional_variable {
         let $var = if let Some($var) = $value.$var {
             Some($var)
         } else {
-            crate::commands::connect::interactive::query_optional_variable($prompt).unwrap()
+            $crate::commands::connect::interactive::query_optional_variable($prompt).unwrap()
         };
     };
 }
@@ -40,7 +40,7 @@ where
         .with_prompt(prompt.to_string())
         .allow_empty(true)
         .interact_text()?;
-    if input.to_string().len() == 0 {
+    if input.to_string().is_empty() {
         return Ok(None);
     }
     Ok(Some(input))
