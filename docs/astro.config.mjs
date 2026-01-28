@@ -2,13 +2,18 @@
 import { defineConfig } from "astro/config";
 import starlight from "@astrojs/starlight";
 import starlightThemeRapide from "starlight-theme-rapide";
-import starlightLinksValidator from 'starlight-links-validator'
+import starlightLinksValidator from "starlight-links-validator";
+import starlightImageZoom from "starlight-image-zoom";
 
 // https://astro.build/config
 export default defineConfig({
   integrations: [
     starlight({
-      plugins: [starlightThemeRapide(), starlightLinksValidator()],
+      plugins: [
+        starlightThemeRapide(),
+        starlightLinksValidator(),
+        starlightImageZoom(),
+      ],
       title: "Drop OSS",
       social: [
         {
