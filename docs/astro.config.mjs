@@ -32,11 +32,17 @@ export default defineConfig({
               items: [
                 { slug: "admin/guides/exposing" },
                 { slug: "admin/guides/creating-library" },
+                { slug: "admin/guides/import-game" },
+                { slug: "admin/guides/import-version" },
               ],
             },
             {
               label: "Metadata",
               autogenerate: { directory: "admin/metadata" },
+            },
+            {
+              label: "Authentication",
+              autogenerate: { directory: "admin/authentication" },
             },
           ],
         },
@@ -48,5 +54,5 @@ export default defineConfig({
       customCss: ["./src/styles/drop.css"],
     }),
   ],
-  site: "https://docs-next.droposs.org/"
+  site: "https://docs-next.droposs.org/",
 });

@@ -1,0 +1,34 @@
+---
+title: Command Parsing
+---
+
+Drop uses a cross-platform, POSIX inspired command parsing for a consistent way to define launch commands in a single string.
+
+The basic format is:
+
+```bash
+MY_ENV_KEY=myvalue MY_OTHER_ENV_KEY=myothervalue mycommand --myargs --myotherargs "other string"
+```
+
+Drop will split this into three parts:
+| | |
+| - | - |
+| Environment variables | Collects anything that has a `=` at the start. (`MY_ENV_KEY=myvalue MY_OTHER_ENV_KEY=myothervalue`) |
+| Command | The next value (`mycommand`) |
+| Arguments | Everything else (`--myargs --myotherargs "other string"`) |
+
+These will be passed in platform-specific process creation functions.
+
+## Platform-specific behaviour
+
+On Linux and macOS (Unix), the command will be reassembled into a single string, and then executed on the system shell, meaning shell expansions and other utilities work. Drop will respect quotes (`"`) to preserve spaces.
+
+On Windows, the command isn't reassembled, and environment variables, command, and args are passed directly to the process creation.
+
+## Format args
+
+| Key         | Value description                                                                  |
+| ----------- | ---------------------------------------------------------------------------------- |
+| `{dir}`     | The current working directory/install directory.                                   |
+| `{exe}`     | The relative name of the executable. The command from above parsing.               |
+| `{abs_exe}` | The absolute path of the executable, the command appended to the install directory |
