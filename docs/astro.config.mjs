@@ -24,6 +24,16 @@ export default defineConfig({
       ],
       sidebar: [
         {
+          label: "Users",
+          items: [
+            { slug: "user" },
+            {
+              label: "Install",
+              autogenerate: { directory: "user/install" },
+            },
+          ],
+        },
+        {
           label: "Admin",
           items: [
             { slug: "admin/quickstart" },
