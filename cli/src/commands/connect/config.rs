@@ -100,8 +100,9 @@ pub async fn manage_configuration(
     let operator = config_option.build()?;
 
     generate_manifest(&operator).await?;
+    info!("Finished uploading manifest");
     generate_speedtest(&operator).await?;
-
+    info!("Finished uploading speedtest");
     Ok(())
 }
 
@@ -129,8 +130,10 @@ async fn generate_speedtest(operator: &Operator) -> anyhow::Result<()> {
         progress_bar.set_position(progress_int);
     });
     let written = tokio::io::copy(&mut reader, &mut writer).await?;
+    progress_bar.finish();
     debug!("Wrote {} bytes to {:?}", written, operator.info());
     writer.into_inner().close().await?;
+    debug!("Closed writer");
     Ok(())
 }
 
