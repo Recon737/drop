@@ -2,12 +2,13 @@
 import { defineConfig } from "astro/config";
 import starlight from "@astrojs/starlight";
 import starlightThemeRapide from "starlight-theme-rapide";
+import starlightLinksValidator from 'starlight-links-validator'
 
 // https://astro.build/config
 export default defineConfig({
   integrations: [
     starlight({
-      plugins: [starlightThemeRapide()],
+      plugins: [starlightThemeRapide(), starlightLinksValidator()],
       title: "Drop OSS",
       social: [
         {
