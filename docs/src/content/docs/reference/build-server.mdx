@@ -64,19 +64,23 @@ This step is optional, you can use our pre-built binaries hosted on the NPM. The
     git submodule update --init --recursive
     ```
 
-2. ### [Optional] Link `droplet`
-
-   Use the directory from the `droplet` build:
-
-   ```bash
-   pnpm install <droplet dir>
-   ```
-
-3. ### Install Node.js dependencies using `pnpm`
+2. ### Install Node.js dependencies using `pnpm`
 
    ```bash
    pnpm install
    ```
+
+3. ### [Optional] Copy in custom build of `droplet`
+
+   Unfortunately, we cannot directly link the `droplet` package we built into Drop, because it's a development version and won't work properly in the built server.
+
+   To copy in your freshly built `droplet` binary, determine the binary triplet you're using. There should be a file called `droplet.<triplet>.node` in your `droplet` directory. Copy that file into the corresponding file in `node_modoles/@drop-oss/droplet-<triplet>`:
+
+   ```bash
+   cp <droplet dir>/droplet.<triplet>.node <drop dir>/node_modules/@drop-oss/droplet-<triplet>
+   ```
+
+   It should override a file with the same name in that directory.
 
 4. ### Build the application
 
@@ -88,10 +92,10 @@ This step is optional, you can use our pre-built binaries hosted on the NPM. The
 
 ## Building `torrential`
 
-To build `torrential`, you only need to run:
+To build `torrential`, you only need to run in the `torrential` directory in your Drop repository:
 
 ```bash
-cargo build --release
+cd torrential && cargo build --release
 ```
 
 ## Set up Drop runtime environment
@@ -122,19 +126,13 @@ You will need to install:
    Use your Node.js package manager to install prisma, either to the local directory or globally:
 
    ```bash
-   npm install prisma@6.11.1 # local installation using npm
+   npm install prisma@6.11.1 dotenv # dotenv is a requirement
    ```
 
    Then, with your database running:
 
    ```bash
-   DATABASE_URL=<your database url> prisma migrate deploy
-   ```
-
-   If you've installed it locally, you might need to run:
-
-   ```bash
-   DATABASE_URL=<your database url> <package manager> prisma migrate deploy
+   DATABASE_URL=<your database url> npm prisma migrate deploy
    ```
 
 4. ### Create your launch script
@@ -145,12 +143,13 @@ You will need to install:
 
    ```bash
    # required environment variables
-   NGINX_CONF=./nginx.conf # potentially update if you've renamed the nginx.conf
-   DATABASE_URL=<your database url>
-   DATA=./data # potentially update if you'd like Drop to store data somewhere else (not library)
+   export NGINX_CONFIG=./nginx.conf # potentially update if you've renamed the nginx.conf
+   export DATABASE_URL=<your database url>
+   export DATA=./data # potentially update if you'd like Drop to store data somewhere else (not library)
+   export EXTERNAL_URL=http://localhost:3000
 
    # optional variables
-   # TORRENTIAL_PATH=<custom torrential path> # may be required if torrential isn't in your $PATH
+   # export TORRENTIAL_PATH=<custom torrential path> # may be required if torrential isn't in your $PATH
    # ... see the rest of the document for other options ...
 
    # run application
