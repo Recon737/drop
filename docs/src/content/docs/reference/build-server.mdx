@@ -1,0 +1,187 @@
+---
+title: Building Drop server
+---
+
+import { Steps } from "@astrojs/starlight/components";
+
+The Drop server is compromised of the following components, and are built with the associated tools:
+
+| Project        | Tools                           |
+| -------------- | ------------------------------- |
+| Frontend & API | Node.js, `pnpm`                 |
+| `droplet`      | Node.js, Rust (nightly), `yarn` |
+| `torrential`   | Rust (nightly)                  |
+
+Then, to be run outside the Docker container, Drop needs the following:
+
+- NGINX, available on `$PATH`, as `nginx`
+- `torrential`, available in the [search path](#torrential-search-algorithm)
+- Node.js, or some other equivalent runtime
+- Postgresql, with migrations ran using `prisma`
+
+## Building `droplet`
+
+:::tip
+This step is optional, you can use our pre-built binaries hosted on the NPM. They will be installed automatically if you skip this step.
+:::
+
+`droplet` is required at build-time for the API server, so we need to build before we can continue with that.
+
+<Steps>
+1. ### Clone the repo and open it
+    ```bash
+    git clone https://github.com/Drop-OSS/droplet.git && cd droplet
+    ```
+
+2. ### Install Node.js dependencies
+
+   ```bash
+   yarn
+   ```
+
+3. ### Build with `yarn`
+
+   ```bash
+   yarn build
+   ```
+
+   :::note
+   Take note this of directory you built `droplet` in, we will need it later.
+   :::
+
+</Steps>
+
+## Building `drop`
+
+<Steps>
+1. ### Clone the repo and recurse submodules
+    ```bash
+    git clone https://github.com/Drop-OSS/drop.git && cd drop
+    ```
+
+    Drop also packages some components as submodules, so we will need to clone those too:
+    ```bash
+    git submodule update --init --recursive
+    ```
+
+2. ### [Optional] Link `droplet`
+
+   Use the directory from the `droplet` build:
+
+   ```bash
+   pnpm install <droplet dir>
+   ```
+
+3. ### Install Node.js dependencies using `pnpm`
+
+   ```bash
+   pnpm install
+   ```
+
+4. ### Build the application
+
+   ```bash
+   pnpm run build
+   ```
+
+</Steps>
+
+## Building `torrential`
+
+To build `torrential`, you only need to run:
+
+```bash
+cargo build --release
+```
+
+## Set up Drop runtime environment
+
+As mentioned above, you will need a few more things to run Drop outside the Docker container. These requirements are for the **runtime** server, the actual application can be built elsewhere, and then copied to your runtime server.
+
+You will need to install:
+
+- NGINX
+- Node.js, with a package manager (`npm` comes prebundled and works fine)
+- Your copy of `torrential`, to somewhere in the [search path](#torrential-search-algorithm)
+- PostgreSQL
+
+<Steps>
+1. ### Prepare your run directory
+   You will need to copy the following files to your run directory:
+   - `prisma.config.ts` from the `drop` repository (contains database configuration)
+   - `prisma` folder from the `drop` repository (contains database migrations)
+   - `.output` from the `drop` repository (the built application)  
+   - `build/nginx.conf` from the `drop` repository (built-in reverse proxy configuration)
+
+2. ### Figure out your `DATABASE_URL`
+
+   The example `compose.yaml` uses `postgres://drop:drop@postgres:5432/drop` as the database URL. You will need to customise this to point to your PostgreSQL installation.
+
+3. ### Install `prisma` and run migrations
+
+   Use your Node.js package manager to install prisma, either to the local directory or globally:
+
+   ```bash
+   npm install prisma@6.11.1 # local installation using npm
+   ```
+
+   Then, with your database running:
+
+   ```bash
+   DATABASE_URL=<your database url> prisma migrate deploy
+   ```
+
+   If you've installed it locally, you might need to run:
+
+   ```bash
+   DATABASE_URL=<your database url> <package manager> prisma migrate deploy
+   ```
+
+4. ### Create your launch script
+
+   You will need to set several environment variables to configure Drop, both because you're running it outside the Docker container, and it's the intended way to configure Drop.
+
+   It's best to create a launch script to configure them for you, like this:
+
+   ```bash
+   # required environment variables
+   NGINX_CONF=./nginx.conf # potentially update if you've renamed the nginx.conf
+   DATABASE_URL=<your database url>
+   DATA=./data # potentially update if you'd like Drop to store data somewhere else (not library)
+
+   # optional variables
+   # TORRENTIAL_PATH=<custom torrential path> # may be required if torrential isn't in your $PATH
+   # ... see the rest of the document for other options ...
+
+   # run application
+   # (node can be swapped for another runtime, if wanted)
+   node ./.output/server/index.mjs
+   ```
+
+5. ### Run Drop
+
+   Make your launch executable (`chmod +x <script>`), and then run in it your runtime directory. Drop should start up.
+
+   :::caution
+   If you're using relative paths (this guide does), make sure you run the script from your runtime directory.
+   :::
+
+</Steps>
+
+### `torrential` search algorithm
+
+Drop searches for a torrential binary in the following order:
+
+<Steps>
+1. `torrential` **directory** in working directory: Drop executes `cargo run
+  --manifest-path ./torrential/Cargo.toml`. 
+  
+2. `torrential` **file** in working
+  directory: Drop executes it.
+
+3. If `TORRENTIAL_PATH` is provided in env, Drop
+   executes it.
+
+4. Drop defaults executing it normally, so on the `$PATH`.
+
+</Steps>

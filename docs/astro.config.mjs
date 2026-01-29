@@ -15,6 +15,7 @@ export default defineConfig({
         starlightImageZoom(),
       ],
       title: "Drop OSS",
+      logo: { src: "./src/assets/wordmark.png", replacesTitle: true},
       social: [
         {
           icon: "github",
