@@ -15,7 +15,7 @@ export default defineConfig({
         starlightImageZoom(),
       ],
       title: "Drop OSS",
-      logo: { src: "./src/assets/wordmark.png", replacesTitle: true},
+      logo: { src: "./src/assets/wordmark.png", replacesTitle: true },
       social: [
         {
           icon: "github",
@@ -46,6 +46,10 @@ export default defineConfig({
                 { slug: "admin/guides/import-game" },
                 { slug: "admin/guides/import-version" },
               ],
+            },
+            {
+              label: "Going further",
+              items: [{ slug: "admin/going-further/importing-update" }],
             },
             {
               label: "Metadata",
