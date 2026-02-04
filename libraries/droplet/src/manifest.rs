@@ -48,7 +48,7 @@ pub async fn generate_manifest_rusty<T: Fn(String), V: Fn(f32)>(
     dir: &Path,
     progress_sfn: V,
     log_sfn: T,
-    reader_semaphore: &Option<Semaphore>,
+    reader_semaphore: Option<&Semaphore>,
 ) -> anyhow::Result<Manifest> {
     let mut backend =
         create_backend_constructor(dir).ok_or(anyhow!("Could not create backend for path."))?()?;

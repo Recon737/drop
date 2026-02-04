@@ -17,7 +17,7 @@ pub async fn main() {
         |message| {
             println!("{}", message);
         },
-        &None,
+        None,
     )
     .await
     .unwrap();
