@@ -9,7 +9,6 @@ The Drop server is compromised of the following components, and are built with t
 | Project        | Tools                           |
 | -------------- | ------------------------------- |
 | Frontend & API | Node.js, `pnpm`                 |
-| `droplet`      | Node.js, Rust (nightly), `yarn` |
 | `torrential`   | Rust (nightly)                  |
 
 Then, to be run outside the Docker container, Drop needs the following:
@@ -18,38 +17,6 @@ Then, to be run outside the Docker container, Drop needs the following:
 - `torrential`, available in the [search path](#torrential-search-algorithm)
 - Node.js, or some other equivalent runtime
 - Postgresql, with migrations ran using `prisma`
-
-## Building `droplet`
-
-:::tip
-This step is optional, you can use our pre-built binaries hosted on the NPM. They will be installed automatically if you skip this step.
-:::
-
-`droplet` is required at build-time for the API server, so we need to build before we can continue with that.
-
-<Steps>
-1. ### Clone the repo and open it
-    ```bash
-    git clone https://github.com/Drop-OSS/droplet.git && cd droplet
-    ```
-
-2. ### Install Node.js dependencies
-
-   ```bash
-   yarn
-   ```
-
-3. ### Build with `yarn`
-
-   ```bash
-   yarn build
-   ```
-
-   :::note
-   Take note this of directory you built `droplet` in, we will need it later.
-   :::
-
-</Steps>
 
 ## Building `drop`
 
@@ -70,19 +37,7 @@ This step is optional, you can use our pre-built binaries hosted on the NPM. The
    pnpm install
    ```
 
-3. ### [Optional] Copy in custom build of `droplet`
-
-   Unfortunately, we cannot directly link the `droplet` package we built into Drop, because it's a development version and won't work properly in the built server.
-
-   To copy in your freshly built `droplet` binary, determine the binary triplet you're using. There should be a file called `droplet.<triplet>.node` in your `droplet` directory. Copy that file into the corresponding file in `node_modoles/@drop-oss/droplet-<triplet>`:
-
-   ```bash
-   cp <droplet dir>/droplet.<triplet>.node <drop dir>/node_modules/@drop-oss/droplet-<triplet>
-   ```
-
-   It should override a file with the same name in that directory.
-
-4. ### Build the application
+3. ### Build the application
 
    ```bash
    pnpm run build
@@ -150,6 +105,7 @@ You will need to install:
 
    # optional variables
    # export TORRENTIAL_PATH=<custom torrential path> # may be required if torrential isn't in your $PATH
+   # export READER_THREADS=4 # customise the number of threads/parallel processes used during import
    # ... see the rest of the document for other options ...
 
    # run application
