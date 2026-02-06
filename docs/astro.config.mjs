@@ -32,6 +32,10 @@ export default defineConfig({
               label: "Install",
               autogenerate: { directory: "user/install" },
             },
+            {
+              label: "Usage",
+              items: [{ slug: "user/usage/proton" }],
+            },
           ],
         },
         {
