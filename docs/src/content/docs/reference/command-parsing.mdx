@@ -12,23 +12,35 @@ MY_ENV_KEY=myvalue MY_OTHER_ENV_KEY=myothervalue mycommand --myargs --myotherarg
 
 Drop will split this into three parts:
 | | |
-| - | - |
+| -- | -- |
 | Environment variables | Collects anything that has a `=` at the start. (`MY_ENV_KEY=myvalue MY_OTHER_ENV_KEY=myothervalue`) |
 | Command | The next value (`mycommand`) |
 | Arguments | Everything else (`--myargs --myotherargs "other string"`) |
 
-These will be passed in platform-specific process creation functions.
+Then, what happens with this, depends on the type of game we're launching:
 
-## Platform-specific behaviour
+## Normal (no emulator)
 
-On Linux and macOS (Unix), the command will be reassembled into a single string, and then executed on the system shell, meaning shell expansions and other utilities work. Drop will respect quotes (`"`) to preserve spaces.
+Drop reconstructs the original shell string, and passes it into platform-specific command wrappers. For Windows, this means nothing. For Linux, it gets wrapped in `umu-run`.
 
-On Windows, the command isn't reassembled, and environment variables, command, and args are passed directly to the process creation.
+It is then parsed again, and then passed into process creation, mapping the environment variable, command, and arguments into their respective platform-dependent places.
+
+Drop logs out it's final parsed command, if you want to look at it in the client logs.
+
+## Emulators
+For emulators, we have the "emulator version" (version containing the emulator), and the "emulated version" (version containing the ROM). 
+
+Drop takes the environment variable passed to the ROM, and appends it to the emulator version's environment variables. It then makes the emulator's command **absolute** (relative to the install directory), and replaces all instances of `{rom}` in the emulator's **arguments** with the **absolute** path to the **command** from the ROM.
+
+Then, it reconstructs this command, and runs it through the platform-specific command wrappers, and passes it to process creation. See above for information about that.
 
 ## Format args
+
+Format args are applied, twice over, after the above processes are done
 
 | Key         | Value description                                                                  |
 | ----------- | ---------------------------------------------------------------------------------- |
 | `{dir}`     | The current working directory/install directory.                                   |
 | `{exe}`     | The relative name of the executable. The command from above parsing.               |
 | `{abs_exe}` | The absolute path of the executable, the command appended to the install directory |
+| `{rom}`     | Emulator-specific, the absolute path to the command passed in the ROM version      |
