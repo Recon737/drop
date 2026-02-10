@@ -22,6 +22,16 @@ export default defineConfig({
           label: "GitHub",
           href: "https://github.com/Drop-OSS/",
         },
+        {
+          icon: "discord",
+          label: "Discord",
+          href: "https://discord.gg/NHx46XKJWA",
+        },
+        {
+          icon: "matrix",
+          label: "Matrix",
+          href: "https://matrix.to/#/%23drop-oss:matrix.org",
+        },
       ],
       sidebar: [
         {
