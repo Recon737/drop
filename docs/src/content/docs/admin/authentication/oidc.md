@@ -45,3 +45,7 @@ A unprotected endpoint that returns a OIDC well-known JSON. Fetched on startup
 Drop uses the `EXTERNAL_URL` environment variable to create the callback URL: `$EXTERNAL_URL/api/v1/auth/odic/callback`.
 
 For example: if `EXTERNAL_URL` was set to `http://localhost:3000/`, then the redirect URL would be `http://localhost:3000/api/v1/auth/odic/callback`.
+
+## Logout URL
+
+Drop supports OIDC back-channel logout, enabling the OIDC provider to logout users. Using the example above, the back-channel logout URL would be `http://localhost:3000/api/v1/auth/odic/logout`.
