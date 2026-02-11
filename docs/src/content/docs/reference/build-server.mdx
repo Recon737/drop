@@ -6,10 +6,10 @@ import { Steps } from "@astrojs/starlight/components";
 
 The Drop server is compromised of the following components, and are built with the associated tools:
 
-| Project        | Tools                           |
-| -------------- | ------------------------------- |
-| Frontend & API | Node.js, `pnpm`                 |
-| `torrential`   | Rust (nightly)                  |
+| Project        | Tools           |
+| -------------- | --------------- |
+| Frontend & API | Node.js, `pnpm` |
+| `torrential`   | Rust (nightly)  |
 
 Then, to be run outside the Docker container, Drop needs the following:
 
@@ -64,6 +64,10 @@ You will need to install:
 - Your copy of `torrential`, to somewhere in the [search path](#torrential-search-algorithm)
 - PostgreSQL
 
+:::tip
+Drop's [dockerfile](https://github.com/Drop-OSS/drop/blob/develop/Dockerfile) provides a great example on how to properly setup Drop's runtime environment.
+:::
+
 <Steps>
 1. ### Prepare your run directory
    You will need to copy the following files to your run directory:
@@ -78,10 +82,14 @@ You will need to install:
 
 3. ### Install `prisma` and run migrations
 
-   Use your Node.js package manager to install prisma, either to the local directory or globally:
+   Use your Node.js package manager to install drop's runtime dependencies:
+
+   :::caution
+   Make sure the prisma version installed is the same version as defined in drop's `package.json`.
+   :::
 
    ```bash
-   npm install prisma@7.3.0 dotenv # dotenv is a requirement
+   npm install prisma@7.3.0 dotenv # dotenv is required
    ```
 
    Then, with your database running:
