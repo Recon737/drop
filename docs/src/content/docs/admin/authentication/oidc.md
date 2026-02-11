@@ -8,7 +8,7 @@ OpenID Connect is a OAuth2 extension support by most identity providers.
 
 To configure OIDC, you must set the following environment variables:
 
-| Variable                             | Usage                                                                                                                                  |
+| Variable                             | Description                                                                                                                            |
 | ------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------- |
 | `OIDC_CLIENT_ID`                     | Client ID from your identity provider.                                                                                                 |
 | `OIDC_CLIENT_SECRET`                 | Client secret from your identity provider.                                                                                             |
@@ -25,13 +25,19 @@ And then, you must configure **either**:
 
 #### Use `OIDC_WELLKNOWN`
 
-A unprotected endpoint that returns a OIDC well-known JSON. Fetched on startup
+A unprotected endpoint that returns a OIDC well-known JSON. Fetched on startup.
+
+For example if you used authentik, your OIDC well-known endpoint would be: `https://authentik.company/application/o/<slug>/.well-known/openid-configuration`.
 
 ---
 
 #### Provide options individually
 
-| Variable             | Usage                                                                     |
+:::caution
+Drop recommends using the OIDC well-known option **instead** of manually specifying each endpoint. This should only be used if your OIDC provider does not support the well-known format.
+:::
+
+| Variable             | Description                                                               |
 | -------------------- | ------------------------------------------------------------------------- |
 | `OIDC_AUTHORIZATION` | Authorization endpoint. Usually ends with `authorize`.                    |
 | `OIDC_TOKEN`         | Token endpoint. Usually ends with `token`.                                |
