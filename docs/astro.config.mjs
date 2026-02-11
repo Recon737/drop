@@ -16,6 +16,7 @@ export default defineConfig({
       ],
       title: "Drop OSS",
       logo: { src: "./src/assets/wordmark.png", replacesTitle: true },
+      tableOfContents: { minHeadingLevel: 2, maxHeadingLevel: 4 },
       social: [
         {
           icon: "github",
