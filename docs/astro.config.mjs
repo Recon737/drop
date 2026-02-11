@@ -59,12 +59,11 @@ export default defineConfig({
                 { slug: "admin/guides/creating-library" },
                 { slug: "admin/guides/import-game" },
                 { slug: "admin/guides/import-version" },
-                { slug: "admin/guides/setting-up-oidc" },
               ],
             },
             {
               label: "Going further",
-              items: [{ slug: "admin/going-further/importing-update" }],
+              autogenerate: { directory: "admin/going-further" },
             },
             {
               label: "Metadata",
