@@ -27,7 +27,7 @@ And then, you must configure **either**:
 
 A unprotected endpoint that returns a OIDC well-known JSON. Fetched on startup.
 
-For example if you used authentik, your OIDC well-known endpoint would be: `https://authentik.company/application/o/<slug>/.well-known/openid-configuration`.
+For example if you used authentik, your OIDC well-known endpoint would be: `https://authentik.tld/application/o/<slug>/.well-known/openid-configuration`.
 
 ---
 

@@ -59,6 +59,7 @@ export default defineConfig({
                 { slug: "admin/guides/creating-library" },
                 { slug: "admin/guides/import-game" },
                 { slug: "admin/guides/import-version" },
+                { slug: "admin/guides/setting-up-oidc" },
               ],
             },
             {
