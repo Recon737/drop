@@ -54,7 +54,10 @@ export default defineConfig({
             },
             {
               label: "Going further",
-              items: [{ slug: "admin/going-further/importing-update" }],
+              items: [
+                { slug: "admin/going-further/importing-update" },
+                { slug: "admin/going-further/emulators" },
+              ],
             },
             {
               label: "Metadata",
