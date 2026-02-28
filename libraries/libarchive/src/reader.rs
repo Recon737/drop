@@ -8,18 +8,19 @@ use std::path::Path;
 use std::ptr;
 use std::slice;
 
-use libc::{c_void, ssize_t};
 use libarchive3_sys::ffi;
+use libc::{c_void, ssize_t};
 
-use archive::{Entry, ReadCompression, ReadFilter, ReadFormat, Handle};
-use error::{ArchiveResult, ArchiveError};
+use archive::{Entry, Handle, ReadCompression, ReadFilter, ReadFormat};
+use error::{ArchiveError, ArchiveResult};
 
 const BLOCK_SIZE: usize = 10240;
 
-unsafe extern "C" fn stream_read_callback(handle: *mut ffi::Struct_archive,
-                                          data: *mut c_void,
-                                          buff: *mut *const c_void)
-                                          -> ssize_t {
+unsafe extern "C" fn stream_read_callback(
+    handle: *mut ffi::Struct_archive,
+    data: *mut c_void,
+    buff: *mut *const c_void,
+) -> ssize_t {
     let pipe: &mut Pipe = &mut *(data as *mut Pipe);
     *buff = pipe.buffer.as_mut_ptr() as *mut c_void;
     match pipe.read_bytes() {
@@ -32,7 +33,7 @@ unsafe extern "C" fn stream_read_callback(handle: *mut ffi::Struct_archive,
     }
 }
 
-pub trait Reader : Handle {
+pub trait Reader: Handle {
     fn entry(&mut self) -> &mut ReaderEntry;
 
     fn header_position(&self) -> i64 {
@@ -67,6 +68,8 @@ pub struct FileReader {
     handle: *mut ffi::Struct_archive,
     entry: ReaderEntry,
 }
+
+unsafe impl Send for FileReader {}
 
 pub struct StreamReader {
     handle: *mut ffi::Struct_archive,
@@ -149,11 +152,13 @@ impl StreamReader {
         unsafe {
             let mut pipe = Box::new(Pipe::new(src));
             let pipe_ptr: *mut c_void = &mut *pipe as *mut Pipe as *mut c_void;
-            match ffi::archive_read_open(builder.handle(),
-                                         pipe_ptr,
-                                         None,
-                                         Some(stream_read_callback),
-                                         None) {
+            match ffi::archive_read_open(
+                builder.handle(),
+                pipe_ptr,
+                None,
+                Some(stream_read_callback),
+                None,
+            ) {
                 ffi::ARCHIVE_OK => {
                     let reader = StreamReader {
                         handle: builder.handle(),
@@ -259,10 +264,12 @@ impl Builder {
             ReadFilter::ProgramSignature(prog, cb, size) => {
                 let c_prog = CString::new(prog).unwrap();
                 unsafe {
-                    ffi::archive_read_support_filter_program_signature(self.handle,
-                                                                       c_prog.as_ptr(),
-                                                                       mem::transmute(cb),
-                                                                       size)
+                    ffi::archive_read_support_filter_program_signature(
+                        self.handle,
+                        c_prog.as_ptr(),
+                        mem::transmute(cb),
+                        size,
+                    )
                 }
             }
             ReadFilter::Rpm => unsafe { ffi::archive_read_support_filter_rpm(self.handle) },
@@ -363,7 +370,9 @@ impl ReaderEntry {
 
 impl Default for ReaderEntry {
     fn default() -> Self {
-        ReaderEntry { handle: ptr::null_mut() }
+        ReaderEntry {
+            handle: ptr::null_mut(),
+        }
     }
 }
 
