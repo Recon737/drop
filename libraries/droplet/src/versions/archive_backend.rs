@@ -71,7 +71,6 @@ impl VersionBackend for ZipVersionBackend {
                 permission: 0o744,
                 size: header.size().try_into()?,
             });
-            println!("storing file {}", header.pathname());
         }
 
         Ok(results)
