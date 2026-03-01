@@ -5,6 +5,9 @@ pub mod file_utils;
 pub mod ssl;
 pub mod versions;
 pub mod manifest;
+pub mod vm;
+
+extern crate libarchive;
 
 #[cfg(test)]
 pub mod tests;

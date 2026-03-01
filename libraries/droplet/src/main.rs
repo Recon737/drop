@@ -22,6 +22,8 @@ pub async fn main() {
     .await
     .unwrap();
 
+    return;
+
     // Sanity checks
     for (_, chunk_data) in manifest.chunks {
         for file in chunk_data.files {

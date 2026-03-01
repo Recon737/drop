@@ -1,11 +1,15 @@
 use std::{
-    collections::HashMap, future::Future, path::Path, sync::{
-        Arc, atomic::{AtomicU64, Ordering}
-    }
+    collections::HashMap,
+    future::Future,
+    mem,
+    path::Path,
+    sync::{
+        atomic::{AtomicU64, Ordering},
+        Arc,
+    },
 };
 
-use anyhow::{anyhow, Error};
-use futures::{stream::FuturesUnordered, StreamExt};
+use anyhow::anyhow;
 use hex::ToHex as _;
 use humansize::{format_size, BINARY};
 use serde::{Deserialize, Serialize};
@@ -14,6 +18,7 @@ use tokio::{
     io::AsyncReadExt as _,
     join,
     sync::{Mutex, Semaphore},
+    task::JoinSet,
 };
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -39,18 +44,21 @@ pub struct Manifest {
     pub key: [u8; 16],
 }
 
-const CHUNK_SIZE: u64 = 1024 * 1024 * 64;
+const CHUNK_SIZE: u64 = 1024 * 1024; //* 64;
 const MAX_FILE_COUNT: usize = 512;
 
-use crate::versions::{create_backend_constructor, types::VersionFile};
+use crate::versions::{
+    create_backend_constructor,
+    types::{VersionBackend, VersionFile},
+};
 
 pub async fn generate_manifest_rusty<T: Fn(String), V: Fn(f32)>(
     dir: &Path,
     progress_sfn: V,
     log_sfn: T,
-    reader_semaphore: Option<&Semaphore>,
+    reader_semaphore: Option<Arc<Semaphore>>,
 ) -> anyhow::Result<Manifest> {
-    let mut backend =
+    let backend =
         create_backend_constructor(dir).ok_or(anyhow!("Could not create backend for path."))?()?;
 
     let required_single_file = backend.require_whole_files();
@@ -137,18 +145,19 @@ pub async fn generate_manifest_rusty<T: Fn(String), V: Fn(f32)>(
     let manifest: Arc<Mutex<HashMap<String, ChunkData>>> = Arc::new(Mutex::new(HashMap::new()));
     let total_manifest_length = Arc::new(AtomicU64::new(0));
 
-    let backend = Arc::new(Mutex::new(backend));
+    // SAFETY: we .join_all() the futures using this
+    let backend: &'static Box<dyn VersionBackend + Send + Sync> =
+        unsafe { mem::transmute(&backend) };
 
-    let futures: FuturesUnordered<impl Future<Output = Result<(), Error>>> =
-        FuturesUnordered::new();
+    let mut futures: JoinSet<Result<(), anyhow::Error>> = JoinSet::new();
     let (send_log, mut recieve_log) = tokio::sync::mpsc::channel(16);
     let chunks_length = chunks.len();
     for (index, chunk) in chunks.into_iter().enumerate() {
         let send_log = send_log.clone();
-        let backend = backend.clone();
         let total_manifest_length = total_manifest_length.clone();
         let manifest = manifest.clone();
-        futures.push(async move {
+        let reader_semaphore = reader_semaphore.clone();
+        futures.spawn(async move {
             let mut read_buf = vec![0; 1024 * 1024 * 64];
 
             let uuid = uuid::Uuid::new_v4().to_string();
@@ -164,6 +173,8 @@ pub async fn generate_manifest_rusty<T: Fn(String), V: Fn(f32)>(
 
             let mut chunk_length = 0;
 
+            println!("starting chunk {}", index);
+
             for (file, start, length) in chunk {
                 let permit = if let Some(reader_semaphore) = &reader_semaphore {
                     Some(reader_semaphore.acquire().await?)
@@ -171,18 +182,20 @@ pub async fn generate_manifest_rusty<T: Fn(String), V: Fn(f32)>(
                     None
                 };
 
-                let mut reader = {
-                    let mut backend_lock = backend.lock().await;
-                    let reader = backend_lock.reader(&file, start, start + length).await?;
-                    reader
-                };
+                let mut reader = backend.reader(&file, start, start + length).await?;
+
+                let mut total = 0;
 
                 loop {
                     let amount = reader.read(&mut read_buf).await?;
                     if amount == 0 {
                         break;
                     }
+                    total += amount;
                     hasher.update(&read_buf[0..amount]);
+                    if total as u64 > length {
+                        panic!("read too much: target {}, got {}", length, total);
+                    }
                 }
 
                 chunk_length += length;
@@ -230,7 +243,7 @@ pub async fn generate_manifest_rusty<T: Fn(String), V: Fn(f32)>(
                 progress_sfn((current_progress / total_progress) * 100.0f32)
             }
         },
-        futures.collect::<Vec<Result<(), Error>>>()
+        futures.join_all()
     );
 
     let manifest = manifest.lock().await;
