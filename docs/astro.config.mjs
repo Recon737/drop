@@ -16,11 +16,22 @@ export default defineConfig({
       ],
       title: "Drop OSS",
       logo: { src: "./src/assets/wordmark.png", replacesTitle: true },
+      tableOfContents: { minHeadingLevel: 2, maxHeadingLevel: 4 },
       social: [
         {
           icon: "github",
           label: "GitHub",
           href: "https://github.com/Drop-OSS/",
+        },
+        {
+          icon: "discord",
+          label: "Discord",
+          href: "https://discord.gg/NHx46XKJWA",
+        },
+        {
+          icon: "matrix",
+          label: "Matrix",
+          href: "https://matrix.to/#/%23drop-oss:matrix.org",
         },
       ],
       sidebar: [
@@ -54,10 +65,7 @@ export default defineConfig({
             },
             {
               label: "Going further",
-              items: [
-                { slug: "admin/going-further/importing-update" },
-                { slug: "admin/going-further/emulators" },
-              ],
+              autogenerate: { directory: "admin/going-further" },
             },
             {
               label: "Metadata",
