@@ -57,7 +57,13 @@ pub trait Reader: Handle {
         unsafe {
             match ffi::archive_read_data_block(self.handle(), &mut buff, &mut size, &mut offset) {
                 ffi::ARCHIVE_EOF => Ok(None),
-                ffi::ARCHIVE_OK => Ok(Some(slice::from_raw_parts(buff as *const u8, size))),
+                ffi::ARCHIVE_OK => {
+                    if buff != ptr::null() {
+                        Ok(Some(slice::from_raw_parts(buff as *const u8, size)))
+                    } else {
+                        return self.read_block();
+                    }
+                }
                 _ => Err(ArchiveError::Sys(self.err_code(), self.err_msg())),
             }
         }
