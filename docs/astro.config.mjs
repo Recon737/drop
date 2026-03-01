@@ -53,6 +53,7 @@ export default defineConfig({
           label: "Admin",
           items: [
             { slug: "admin/quickstart" },
+            { slug: "admin/guides/migrating" },
             {
               label: "Guides",
               items: [
