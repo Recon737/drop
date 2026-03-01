@@ -44,7 +44,7 @@ pub struct Manifest {
     pub key: [u8; 16],
 }
 
-const CHUNK_SIZE: u64 = 1024 * 1024; //* 64;
+const CHUNK_SIZE: u64 = 1024 * 1024 * 64;
 const MAX_FILE_COUNT: usize = 512;
 
 use crate::versions::{
@@ -172,8 +172,6 @@ pub async fn generate_manifest_rusty<T: Fn(String), V: Fn(f32)>(
             };
 
             let mut chunk_length = 0;
-
-            println!("starting chunk {}", index);
 
             for (file, start, length) in chunk {
                 let permit = if let Some(reader_semaphore) = &reader_semaphore {
