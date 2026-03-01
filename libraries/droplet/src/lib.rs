@@ -7,7 +7,7 @@ pub mod versions;
 pub mod manifest;
 pub mod vm;
 
-extern crate libarchive;
+extern crate libarchive_drop;
 
 #[cfg(test)]
 pub mod tests;

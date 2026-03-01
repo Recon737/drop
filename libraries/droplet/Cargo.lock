@@ -258,7 +258,7 @@ dependencies = [
  "getrandom 0.3.4",
  "hex",
  "humansize",
- "libarchive",
+ "libarchive-drop",
  "rcgen",
  "ring",
  "serde",
@@ -465,7 +465,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bbd2bcb4c963f2ddae06a2efc7e9f3591312473c50c6685e1f298068316e66fe"
 
 [[package]]
-name = "libarchive"
+name = "libarchive-drop"
 version = "0.1.1"
 dependencies = [
  "libarchive3-sys",

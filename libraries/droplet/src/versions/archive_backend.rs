@@ -2,7 +2,7 @@ use std::{path::PathBuf, task::Poll};
 
 use anyhow::{anyhow};
 use async_trait::async_trait;
-use libarchive::{
+use libarchive_drop::{
     archive::{Entry, FileType, ReadCompression, ReadFormat},
     reader::{Builder, FileReader, Reader},
 };
