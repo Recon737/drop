@@ -3,9 +3,7 @@ extern crate test_generator;
 
 use std::path::Path;
 
-use serde_json::json;
 use test_generator::test_resources;
-use tokio::{fs::File, io::AsyncWriteExt};
 
 use crate::manifest::generate_manifest_rusty;
 
@@ -35,14 +33,14 @@ fn manifest_gen(resource: &str) {
             )
         });
 
-        let mut output_path = filepath.to_path_buf();
-        output_path.set_extension("json");
-
-        let mut file = File::create(output_path)
-            .await
-            .expect("failed to open output path");
-        file.write_all(json!(manifest).to_string().as_bytes())
-            .await
-            .expect("failed to write output");
+        let first_chunk = manifest
+            .chunks
+            .values()
+            .next()
+            .expect("no chunks generated");
+        let first_chunk_length = first_chunk.files.len();
+        if first_chunk_length == 0 {
+            panic!("{} has no files in manifest", filepath.display());
+        }
     });
 }
