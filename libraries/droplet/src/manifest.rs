@@ -156,7 +156,7 @@ pub async fn generate_manifest_rusty<T: Fn(String), V: Fn(f32)>(
         let manifest = manifest.clone();
         let reader_semaphore = reader_semaphore.clone();
         futures.spawn(async move {
-            let mut read_buf = vec![0; 1024 * 1024 * 64];
+            let mut read_buf = vec![0u8; 1024 * 1024 * 8];
 
             let uuid = uuid::Uuid::new_v4().to_string();
             let mut hasher = Sha256::new();
@@ -189,9 +189,10 @@ pub async fn generate_manifest_rusty<T: Fn(String), V: Fn(f32)>(
                     }
                     total += amount;
                     hasher.update(&read_buf[0..amount]);
-                    if total as u64 > length {
-                        panic!("read too much: target {}, got {}", length, total);
-                    }
+                }
+
+                if total as u64 > length {
+                    panic!("read too much: target {}, got {}", length, total);
                 }
 
                 chunk_length += length;

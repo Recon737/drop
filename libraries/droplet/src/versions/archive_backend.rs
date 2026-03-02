@@ -28,27 +28,53 @@ impl ZipVersionBackend {
     }
 }
 
-struct ArchiveReader {
+struct ArchiveReader<'a> {
     archive: FileReader,
+    prev_block: Option<&'a [u8]>,
 }
 
-impl AsyncRead for ArchiveReader {
+impl<'a> AsyncRead for ArchiveReader<'a> {
     fn poll_read(
-        self: std::pin::Pin<&mut Self>,
+        mut self: std::pin::Pin<&mut Self>,
         _cx: &mut std::task::Context<'_>,
         buf: &mut tokio::io::ReadBuf<'_>,
     ) -> std::task::Poll<std::io::Result<()>> {
+        if let Some(block) = &mut self.prev_block {
+            let to_read = buf.remaining().min(block.len());
+            let result = block.split_off(..to_read);
+            let result = result.unwrap(); // SAFETY: above .min statement
+            buf.put_slice(result);
+
+            // If the block is empty, we can read more
+            if block.is_empty() {
+                self.prev_block = None;
+            } else {
+                return Poll::Ready(Ok(()));
+            }
+        }
         let block = match self.archive.read_block() {
             Ok(v) => v,
             Err(err) => return Poll::Ready(Err(std::io::Error::other(err.to_string()))),
         };
 
-        let block = match block {
+        let mut block = match block {
             Some(v) => v,
             None => return Poll::Ready(Ok(())),
         };
 
-        buf.put_slice(block);
+        let write_amount = buf.remaining().min(block.len());
+        let to_write = block.split_off(..write_amount);
+        let to_write = to_write.unwrap(); // SAFETY: above .min statement
+        buf.put_slice(to_write);
+
+        if !block.is_empty() {
+            #[cfg(debug_assertions)]
+            if self.prev_block.is_some() {
+                panic!("replacing prev_block while it contains data")
+            }
+            self.prev_block.replace(&block[buf.remaining()..]);
+        }
+
         Poll::Ready(Ok(()))
     }
 }
@@ -95,7 +121,10 @@ impl VersionBackend for ZipVersionBackend {
             }
         }
 
-        Ok(Box::new(ArchiveReader { archive }))
+        Ok(Box::new(ArchiveReader {
+            archive,
+            prev_block: None,
+        }))
     }
 
     async fn peek_file(&self, sub_path: String) -> anyhow::Result<VersionFile> {
