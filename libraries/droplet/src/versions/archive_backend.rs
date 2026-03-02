@@ -49,7 +49,7 @@ impl AsyncRead for ArchiveReader {
         };
 
         buf.put_slice(block);
-        return Poll::Ready(Ok(()));
+        Poll::Ready(Ok(()))
     }
 }
 

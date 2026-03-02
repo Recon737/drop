@@ -28,11 +28,12 @@ pub fn _list_files(vec: &mut Vec<PathBuf>, path: &Path) -> Result<()> {
     Ok(())
 }
 
-const SUPPORTED_FILE_EXTENSIONS: [&'static str; 11] = [
+const SUPPORTED_FILE_EXTENSIONS: [&str; 11] = [
     "tar", "pax", "cpio", "zip", "jar", "ar", "xar", "rar", "rpm", "7z", "iso",
 ];
 
 pub mod types;
+#[allow(clippy::type_complexity)]
 pub fn create_backend_constructor<'a>(
     path: &Path,
 ) -> Option<Box<dyn FnOnce() -> Result<Box<dyn VersionBackend + Send + Sync + 'a>>>> {
@@ -48,11 +49,10 @@ pub fn create_backend_constructor<'a>(
         }));
     };
 
-    let file_extension = path.extension().map(|v| v.to_str()).flatten()?;
+    let file_extension = path.extension().and_then(|v| v.to_str())?;
 
     if SUPPORTED_FILE_EXTENSIONS
-        .iter()
-        .any(|v| *v == file_extension)
+        .contains(&file_extension)
     {
         let buf = path.to_path_buf();
         return Some(Box::new(move || Ok(Box::new(ZipVersionBackend::new(buf)?))));

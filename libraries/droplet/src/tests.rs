@@ -19,7 +19,7 @@ fn manifest_gen(resource: &str) {
     runtime.block_on(async move {
         let filepath = Path::new(resource);
         let manifest = generate_manifest_rusty(
-            &filepath,
+            filepath,
             |_| {},
             |message| {
                 println!("({}) {}", filepath.display(), message);
@@ -27,10 +27,13 @@ fn manifest_gen(resource: &str) {
             None,
         )
         .await
-        .expect(&format!(
-            "failed to generate manifest for {}",
-            filepath.display()
-        ));
+        .unwrap_or_else(|err| {
+            panic!(
+                "failed to generate manifest for {}: {:?}",
+                filepath.display(),
+                err
+            )
+        });
 
         let mut output_path = filepath.to_path_buf();
         output_path.set_extension("json");

@@ -1,6 +1,5 @@
 use std::{
     collections::HashMap,
-    future::Future,
     mem,
     path::Path,
     sync::{
@@ -146,8 +145,8 @@ pub async fn generate_manifest_rusty<T: Fn(String), V: Fn(f32)>(
     let total_manifest_length = Arc::new(AtomicU64::new(0));
 
     // SAFETY: we .join_all() the futures using this
-    let backend: &'static Box<dyn VersionBackend + Send + Sync> =
-        unsafe { mem::transmute(&backend) };
+    let backend: &'static (dyn VersionBackend + Send + Sync) =
+        unsafe { mem::transmute(&*backend) };
 
     let mut futures: JoinSet<Result<(), anyhow::Error>> = JoinSet::new();
     let (send_log, mut recieve_log) = tokio::sync::mpsc::channel(16);
