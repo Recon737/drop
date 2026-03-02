@@ -38,6 +38,11 @@ jobs:
             target
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
+      - name: Install libarchive
+        run: |
+          sudo apt-get install libarchive-dev -y
+        
+
       - name: Check formatting
         run: cargo fmt --all -- --check
 
