@@ -1,6 +1,5 @@
 use std::any::Any;
 use std::default::Default;
-use std::error::Error;
 use std::ffi::CString;
 use std::io::{self, Read};
 use std::mem;
@@ -26,7 +25,7 @@ unsafe extern "C" fn stream_read_callback(
     match pipe.read_bytes() {
         Ok(size) => size as ssize_t,
         Err(e) => {
-            let desc = CString::new(e.description()).unwrap();
+            let desc = CString::new(e.to_string()).unwrap();
             ffi::archive_set_error(handle, e.raw_os_error().unwrap_or(0), desc.as_ptr());
             -1 as ssize_t
         }
@@ -93,7 +92,7 @@ pub struct ReaderEntry {
 }
 
 struct Pipe {
-    reader: Box<Read>,
+    reader: Box<dyn Read>,
     buffer: Vec<u8>,
 }
 
@@ -112,7 +111,7 @@ impl Pipe {
 
 impl FileReader {
     pub fn open<T: AsRef<Path>>(mut builder: Builder, file: T) -> ArchiveResult<Self> {
-        try!(builder.check_consumed());
+        builder.check_consumed()?;
         let c_file = CString::new(file.as_ref().to_string_lossy().as_bytes()).unwrap();
         unsafe {
             match ffi::archive_read_open_filename(builder.handle(), c_file.as_ptr(), BLOCK_SIZE) {
@@ -120,7 +119,7 @@ impl FileReader {
                     builder.consume();
                     Ok(Self::new(builder.handle()))
                 }
-                _ => Err(ArchiveError::from(&builder as &Handle)),
+                _ => Err(ArchiveError::from(&builder as &dyn Handle)),
             }
         }
     }
@@ -176,7 +175,7 @@ impl StreamReader {
                 }
                 _ => {
                     builder.consume();
-                    Err(ArchiveError::from(&builder as &Handle))
+                    Err(ArchiveError::from(&builder as &dyn Handle))
                 }
             }
         }
@@ -245,7 +244,7 @@ impl Builder {
         };
         match result {
             ffi::ARCHIVE_OK => Ok(()),
-            _ => ArchiveResult::from(self as &Handle),
+            _ => ArchiveResult::from(self as &dyn Handle),
         }
     }
 
@@ -284,7 +283,7 @@ impl Builder {
         };
         match result {
             ffi::ARCHIVE_OK => Ok(()),
-            _ => ArchiveResult::from(self as &Handle),
+            _ => ArchiveResult::from(self as &dyn Handle),
         }
     }
 
@@ -310,17 +309,17 @@ impl Builder {
         };
         match result {
             ffi::ARCHIVE_OK => Ok(()),
-            _ => ArchiveResult::from(self as &Handle),
+            _ => ArchiveResult::from(self as &dyn Handle),
         }
     }
 
     pub fn open_file<T: AsRef<Path>>(self, file: T) -> ArchiveResult<FileReader> {
-        try!(self.check_consumed());
+        self.check_consumed()?;
         FileReader::open(self, file)
     }
 
     pub fn open_stream<T: Any + Read>(self, src: T) -> ArchiveResult<StreamReader> {
-        try!(self.check_consumed());
+        self.check_consumed()?;
         StreamReader::open(self, src)
     }
 
