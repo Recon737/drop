@@ -1,13 +1,13 @@
 use std::default::Default;
+use std::ffi::CString;
 use std::path::Path;
 use std::ptr;
-use std::ffi::CString;
 
 use libarchive3_sys::ffi;
 
 use archive::{Entry, ExtractOptions, Handle, WriteFilter, WriteFormat};
+use error::{ArchiveError, ArchiveResult};
 use reader::{Reader, ReaderEntry};
-use error::{ArchiveResult, ArchiveError};
 
 pub struct Writer {
     handle: *mut ffi::Struct_archive,
@@ -159,14 +159,17 @@ impl Disk {
 
         unsafe {
             loop {
-                match ffi::archive_read_data_block(reader.handle(),
-                                                   &mut buff,
-                                                   &mut size,
-                                                   &mut offset) {
+                match ffi::archive_read_data_block(
+                    reader.handle(),
+                    &mut buff,
+                    &mut size,
+                    &mut offset,
+                ) {
                     ffi::ARCHIVE_EOF => return Ok(size),
                     ffi::ARCHIVE_OK => {
-                        if ffi::archive_write_data_block(self.handle, buff, size, offset) !=
-                           ffi::ARCHIVE_OK as isize {
+                        if ffi::archive_write_data_block(self.handle, buff, size, offset)
+                            != ffi::ARCHIVE_OK as isize
+                        {
                             return Err(ArchiveError::from(self as &Handle));
                         }
                     }
