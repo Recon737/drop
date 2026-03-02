@@ -51,9 +51,7 @@ pub fn create_backend_constructor<'a>(
 
     let file_extension = path.extension().and_then(|v| v.to_str())?;
 
-    if SUPPORTED_FILE_EXTENSIONS
-        .contains(&file_extension)
-    {
+    if SUPPORTED_FILE_EXTENSIONS.contains(&file_extension) {
         let buf = path.to_path_buf();
         return Some(Box::new(move || Ok(Box::new(ZipVersionBackend::new(buf)?))));
     }
