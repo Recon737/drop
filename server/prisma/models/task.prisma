@@ -1,0 +1,19 @@
+model Task {
+    id        String
+    taskGroup String
+    name      String
+
+    started DateTime
+    ended   DateTime
+
+    success  Boolean
+    error    Json?
+    progress Float
+    log      String[]
+
+    actions String[]
+
+    acls String[]
+
+    @@id([id, started])
+}

@@ -1,0 +1,240 @@
+enum MetadataSource {
+  Manual
+  GiantBomb
+  Steam
+  PCGamingWiki
+  IGDB
+  Metacritic
+  OpenCritic
+}
+
+enum GameType {
+  Game
+  Emulator
+  Dependency
+}
+
+model Game {
+  id String @id @default(uuid())
+
+  metadataSource MetadataSource
+  metadataId     String
+  created        DateTime       @default(now())
+
+  type GameType @default(Game)
+
+  // Any field prefixed with m is filled in from metadata
+  // Acts as a cache so we can search and filter it
+  mName String // Name of game
+
+  mShortDescription String // Short description
+  mDescription      String // Supports markdown
+  mReleased         DateTime // When the game was released
+
+  ratings GameRating[]
+
+  featured Boolean @default(false)
+
+  mIconObjectId           String // linked to objects in s3
+  mBannerObjectId         String // linked to objects in s3
+  mCoverObjectId          String
+  mImageCarouselObjectIds String[] @default([]) // linked to below array
+  mImageLibraryObjectIds  String[] // linked to objects in s3
+
+  versions GameVersion[]
+
+  // These fields will not be optional in the next version
+  // Any game without a library ID will be assigned one at startup, based on the defaults
+  libraryId   String
+  library     Library @relation(fields: [libraryId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  libraryPath String
+
+  collections CollectionEntry[]
+  saves       SaveSlot[]
+  screenshots Screenshot[]
+  tags        GameTag[]
+  playtime    Playtime[]
+
+  developers             Company[]               @relation(name: "developers")
+  publishers             Company[]               @relation(name: "publishers")
+  unimportedGameVersions UnimportedGameVersion[]
+
+  @@unique([metadataSource, metadataId], name: "metadataKey")
+  @@unique([libraryId, libraryPath], name: "libraryKey")
+  @@index([mName(ops: raw("gist_trgm_ops(siglen=32)"))], type: Gist)
+}
+
+model GameTag {
+  id   String @id @default(uuid())
+  name String @unique
+
+  games Game[]
+
+  @@index([name(ops: raw("gist_trgm_ops(siglen=32)"))], type: Gist)
+}
+
+model GameRating {
+  id String @id @default(uuid())
+
+  metadataSource MetadataSource
+  metadataId     String
+  created        DateTime       @default(now())
+
+  mReviewCount  Int
+  mReviewRating Float // 0 to 1
+
+  mReviewHref String?
+
+  game   Game   @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  gameId String
+
+  @@unique([metadataSource, metadataId], name: "metadataKey")
+}
+
+model UnimportedGameVersion {
+  id          String @id @default(uuid())
+  gameId      String
+  game        Game   @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  versionName String
+
+  manifest Json
+  fileList String[]
+}
+
+// A particular set of files that relate to the version
+model GameVersion {
+  gameId    String
+  game      Game   @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  versionId String @id @default(uuid())
+
+  displayName String?
+  versionPath String?
+
+  created DateTime @default(now())
+
+  launches LaunchConfiguration[]
+  setups   SetupConfiguration[]
+
+  onlySetup Boolean @default(false)
+
+  dropletManifest  Json // Results from droplet
+  fileList         String[] // List of all files, for delta updates
+  negativeFileList String[] // List of files to remove, for delta updates
+
+  versionIndex Int
+  delta        Boolean @default(false)
+
+  requiredContent  GameVersion[] @relation(name: "requiredContent")
+  requiringContent GameVersion[] @relation(name: "requiredContent")
+}
+
+model SetupConfiguration {
+  setupId String @id @default(uuid())
+
+  command String
+
+  platform Platform
+
+  versionId   String
+  gameVersion GameVersion @relation(fields: [versionId], references: [versionId], onDelete: Cascade, onUpdate: Cascade)
+}
+
+model LaunchConfiguration {
+  launchId String @id @default(uuid())
+
+  name String
+
+  command String
+
+  platform Platform
+
+  // For emulation targets
+  emulatorId          String?
+  emulator            LaunchConfiguration? @relation(fields: [emulatorId], references: [launchId], name: "emulator")
+  emulatorSuggestions String[]
+
+  umuIdOverride    String?
+  umuStoreOverride String?
+
+  versionId   String
+  gameVersion GameVersion @relation(fields: [versionId], references: [versionId], onDelete: Cascade, onUpdate: Cascade)
+
+  emulations LaunchConfiguration[] @relation("emulator")
+}
+
+// A save slot for a game
+model SaveSlot {
+  gameId String
+  game   Game   @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  index  Int
+
+  createdAt DateTime @default(now())
+  playtime  Float    @default(0) // hours
+
+  lastUsedClientId String?
+  lastUsedClient   Client? @relation(fields: [lastUsedClientId], references: [id])
+
+  historyObjectIds String[] // list of objects
+  historyChecksums String[] // list of hashes
+
+  @@id([gameId, userId, index], name: "id")
+}
+
+model Screenshot {
+  id String @id @default(uuid())
+
+  gameId String
+  game   Game   @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  objectId String
+  private  Boolean // if other users can see
+
+  createdAt DateTime @default(now()) @db.Timestamptz(0)
+
+  @@index([gameId, userId])
+  @@index([userId])
+}
+
+model Playtime {
+  gameId String
+  game   Game   @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  seconds Int // seconds user has spent playing the game
+
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+
+  @@id([gameId, userId])
+  @@index([userId])
+}
+
+model Company {
+  id String @id @default(uuid())
+
+  metadataSource        MetadataSource
+  metadataId            String
+  metadataOriginalQuery String
+
+  mName             String
+  mShortDescription String
+  mDescription      String
+  mLogoObjectId     String
+  mBannerObjectId   String
+  mWebsite          String
+
+  developed Game[] @relation(name: "developers")
+  published Game[] @relation(name: "publishers")
+
+  @@unique([metadataSource, metadataId], name: "metadataKey")
+}
+
+model ObjectHash {
+  id   String @id
+  hash String
+}

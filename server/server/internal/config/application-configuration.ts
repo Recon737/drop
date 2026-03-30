@@ -1,0 +1,100 @@
+import type { ApplicationSettingsModel } from "~/prisma/client/models";
+import prisma from "../db/database";
+import type { Settings } from "../utils/types";
+
+class ApplicationConfiguration {
+  // Reference to the currently selected application configuration
+  private currentApplicationSettings: ApplicationSettingsModel | undefined =
+    undefined;
+
+  private async save() {
+    await this.init();
+
+    const deepAppConfigCopy: Omit<ApplicationSettingsModel, "timestamp"> & {
+      timestamp?: Date;
+    } = JSON.parse(JSON.stringify(this.currentApplicationSettings));
+
+    delete deepAppConfigCopy["timestamp"];
+
+    await prisma.applicationSettings.create({
+      data: deepAppConfigCopy,
+    });
+  }
+
+  private async init() {
+    if (this.currentApplicationSettings === undefined) {
+      const applicationSettingsCount = await prisma.applicationSettings.count(
+        {},
+      );
+      if (applicationSettingsCount > 0) {
+        await applicationSettings.pullConfiguration();
+      } else {
+        await applicationSettings.initialiseConfiguration();
+      }
+    }
+  }
+
+  // Default application configuration
+  async initialiseConfiguration() {
+    const initialState = await prisma.applicationSettings.create({
+      data: {
+        metadataProviders: [],
+      },
+    });
+
+    this.currentApplicationSettings = initialState;
+  }
+
+  async pullConfiguration() {
+    const latestState = await prisma.applicationSettings.findFirst({
+      orderBy: {
+        timestamp: "desc",
+      },
+    });
+
+    if (!latestState) throw new Error("No application configuration to pull");
+
+    this.currentApplicationSettings = latestState;
+  }
+
+  async set<T extends keyof ApplicationSettingsModel>(
+    key: T,
+    value: ApplicationSettingsModel[T],
+  ) {
+    await this.init();
+    if (!this.currentApplicationSettings)
+      throw new Error("Somehow, failed to initialise application settings");
+
+    if (this.currentApplicationSettings[key] !== value) {
+      this.currentApplicationSettings[key] = value;
+
+      await this.save();
+    }
+  }
+
+  async get<T extends keyof ApplicationSettingsModel>(
+    key: T,
+  ): Promise<ApplicationSettingsModel[T]> {
+    await this.init();
+    if (!this.currentApplicationSettings)
+      throw new Error("Somehow, failed to initialise application settings");
+
+    return this.currentApplicationSettings[key];
+  }
+
+  async getSettings(): Promise<Settings> {
+    return {
+      store: {
+        showGamePanelTextDecoration: await applicationSettings.get(
+          "showGamePanelTextDecoration",
+        ),
+      },
+      generalSettings: {
+        serverName: await applicationSettings.get("serverName"),
+        mLogoObjectId: await applicationSettings.get("mLogoObjectId"),
+      },
+    };
+  }
+}
+
+export const applicationSettings = new ApplicationConfiguration();

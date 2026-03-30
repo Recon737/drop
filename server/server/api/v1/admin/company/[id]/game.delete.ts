@@ -1,0 +1,46 @@
+import { type } from "arktype";
+import { readDropValidatedBody, throwingArktype } from "~/server/arktype";
+import aclManager from "~/server/internal/acls";
+import prisma from "~/server/internal/db/database";
+
+const GameDelete = type({
+  id: "string",
+}).configure(throwingArktype);
+
+export default defineEventHandler(async (h3) => {
+  const allowed = await aclManager.allowSystemACL(h3, ["company:update"]);
+  if (!allowed) throw createError({ statusCode: 403 });
+
+  const companyId = getRouterParam(h3, "id")!;
+
+  const body = await readDropValidatedBody(h3, GameDelete);
+
+  const gameId = await prisma.game.findUnique({
+    where: { id: body.id },
+    select: { id: true },
+  });
+  if (!gameId)
+    throw createError({ statusCode: 404, message: "Game not found" });
+
+  // SAFETY: above check
+  // eslint-disable-next-line drop/no-prisma-delete
+  await prisma.game.update({
+    where: {
+      id: body.id,
+    },
+    data: {
+      publishers: {
+        disconnect: {
+          id: companyId,
+        },
+      },
+      developers: {
+        disconnect: {
+          id: companyId,
+        },
+      },
+    },
+  });
+
+  return;
+});

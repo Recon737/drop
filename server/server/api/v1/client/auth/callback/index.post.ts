@@ -1,0 +1,31 @@
+import clientHandler from "~/server/internal/clients/handler";
+import sessionHandler from "~/server/internal/session";
+
+export default defineEventHandler(async (h3) => {
+  const session = await sessionHandler.getSession(h3);
+  if (!session || !session.authenticated)
+    throw createError({ statusCode: 403 });
+
+  const body = await readBody(h3);
+  const clientId = await body.id;
+
+  const client = await clientHandler.fetchClient(clientId);
+  if (!client)
+    throw createError({
+      statusCode: 400,
+      statusMessage: "Invalid or expired client ID.",
+    });
+
+  if (client.userId != session.authenticated.userId)
+    throw createError({
+      statusCode: 403,
+      statusMessage: "Not allowed to authorize this client.",
+    });
+
+  const token = await clientHandler.generateAuthToken(clientId);
+
+  return {
+    redirect: `drop://handshake/${clientId}/${token}`,
+    token: `${clientId}/${token}`,
+  };
+});

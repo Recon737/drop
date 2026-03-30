@@ -1,0 +1,6 @@
+{
+  "compilerOptions": {
+    "exactOptionalPropertyTypes": true
+  },
+  "extends": "../.nuxt/tsconfig.server.json"
+}

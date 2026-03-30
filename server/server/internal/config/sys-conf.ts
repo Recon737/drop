@@ -1,0 +1,94 @@
+import normalizeUrl from "normalize-url";
+
+class SystemConfig {
+  private libraryFolder = process.env.LIBRARY ?? "./.data/library";
+  private dataFolder = process.env.DATA ?? "./.data/data";
+
+  private metadataTimeout = parseInt(process.env.METADATA_TIMEOUT ?? "5000");
+
+  private externalUrl = normalizeUrl(
+    process.env.EXTERNAL_URL ?? "http://localhost:3000",
+    { stripWWW: false },
+  );
+  private dropVersion: string;
+  private gitRef: string;
+  private oidcRequireHttps;
+
+  private checkForUpdates = getUpdateCheckConfig();
+
+  constructor() {
+    // get drop version and git ref from nuxt config
+    const config = useRuntimeConfig();
+    this.dropVersion = config.dropVersion;
+    this.gitRef = config.gitRef;
+
+    const oidcRequireHttps = process.env.OIDC_REQUIRE_HTTPS as
+      | string
+      | undefined;
+
+    // default to true if not set
+    this.oidcRequireHttps =
+      oidcRequireHttps !== undefined &&
+      oidcRequireHttps.toLocaleLowerCase() === "false"
+        ? false
+        : true;
+  }
+
+  getLibraryFolder() {
+    return this.libraryFolder;
+  }
+
+  getDataFolder() {
+    return this.dataFolder;
+  }
+
+  getMetadataTimeout() {
+    return this.metadataTimeout;
+  }
+
+  getDropVersion() {
+    return this.dropVersion;
+  }
+
+  getGitRef() {
+    return this.gitRef;
+  }
+
+  shouldCheckForUpdates() {
+    return this.checkForUpdates;
+  }
+
+  getExternalUrl() {
+    return this.externalUrl;
+  }
+
+  // if oidc should require https for endpoints
+  shouldOidcRequireHttps() {
+    return this.oidcRequireHttps;
+  }
+}
+
+export const systemConfig = new SystemConfig();
+
+/**
+ * Gets the configuration for checking updates based on various conditions
+ * @returns true if updates should be checked, false otherwise.
+ */
+function getUpdateCheckConfig(): boolean {
+  const envCheckUpdates = process.env.CHECK_FOR_UPDATES;
+
+  // Check environment variable
+  if (envCheckUpdates !== undefined) {
+    // if explicitly set to true or false, return that value
+    if (envCheckUpdates.toLocaleLowerCase() === "true") {
+      return true;
+    } else if (envCheckUpdates.toLocaleLowerCase() === "false") {
+      return false;
+    }
+  } else if (process.env.NODE_ENV === "production") {
+    // default to true in production
+    return true;
+  }
+
+  return false;
+}

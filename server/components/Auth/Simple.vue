@@ -1,0 +1,175 @@
+<template>
+  <form class="space-y-6" @submit.prevent="signin_wrapper">
+    <div>
+      <label
+        for="username"
+        class="block text-sm font-medium leading-6 text-zinc-300"
+        >{{ $t("auth.username") }}</label
+      >
+      <div class="mt-2">
+        <input
+          id="username"
+          v-model="username"
+          name="username"
+          type="username"
+          autocomplete="username webauthn"
+          required
+          class="block w-full rounded-md border-0 py-1.5 px-3 shadow-sm bg-zinc-950/20 text-zinc-300 ring-1 ring-inset ring-zinc-800 placeholder:text-zinc-400 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm sm:leading-6"
+        />
+      </div>
+    </div>
+
+    <div>
+      <label
+        for="password"
+        class="block text-sm font-medium leading-6 text-zinc-300"
+        >{{ $t("auth.password") }}</label
+      >
+      <div class="mt-2">
+        <input
+          id="password"
+          v-model="password"
+          name="password"
+          type="password"
+          autocomplete="current-password"
+          required
+          class="block w-full rounded-md border-0 py-1.5 px-3 shadow-sm bg-zinc-950/20 text-zinc-300 ring-1 ring-inset ring-zinc-800 placeholder:text-zinc-400 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm sm:leading-6"
+        />
+      </div>
+    </div>
+
+    <div class="flex items-center justify-between">
+      <div class="flex items-center">
+        <input
+          id="remember-me"
+          v-model="rememberMe"
+          name="remember-me"
+          type="checkbox"
+          class="h-4 w-4 rounded bg-zinc-800 border-zinc-700 text-blue-600 focus:ring-blue-600"
+        />
+        <label
+          for="remember-me"
+          class="ml-3 block text-sm leading-6 text-zinc-400"
+          >{{ $t("auth.signin.rememberMe") }}</label
+        >
+      </div>
+
+      <div class="text-sm leading-6">
+        <NuxtLink
+          to="#"
+          class="font-semibold text-blue-600 hover:text-blue-500"
+          >{{ $t("auth.signin.forgot") }}</NuxtLink
+        >
+      </div>
+    </div>
+
+    <div>
+      <LoadingButton class="w-full" :loading="loading">{{
+        $t("auth.signin.signin")
+      }}</LoadingButton>
+    </div>
+
+    <div v-if="error" class="mt-1 rounded-md bg-red-600/10 p-4">
+      <div class="flex">
+        <div class="flex-shrink-0">
+          <XCircleIcon class="h-5 w-5 text-red-600" aria-hidden="true" />
+        </div>
+        <div class="ml-3">
+          <h3 class="text-sm font-medium text-red-600">
+            {{ error }}
+          </h3>
+        </div>
+      </div>
+    </div>
+  </form>
+</template>
+
+<script setup lang="ts">
+import { XCircleIcon } from "@heroicons/vue/20/solid";
+import {
+  startAuthentication,
+  browserSupportsWebAuthn,
+} from "@simplewebauthn/browser";
+import { FetchError } from "ofetch";
+
+const username = ref("");
+const password = ref("");
+const rememberMe = ref(false);
+const loading = ref(false);
+
+async function passkeyAutofill() {
+  let silentWebauthnOptions;
+  try {
+    silentWebauthnOptions = await $dropFetch("/api/v1/auth/passkey/start", {
+      method: "POST",
+    });
+  } catch {
+    return;
+  }
+
+  const result = await startAuthentication({
+    optionsJSON: silentWebauthnOptions,
+    useBrowserAutofill: true,
+  });
+
+  loading.value = true;
+
+  await $dropFetch("/api/v1/auth/passkey/finish", {
+    method: "POST",
+    body: result,
+  });
+
+  await completeSignin();
+}
+
+onMounted(async () => {
+  if (browserSupportsWebAuthn()) {
+    try {
+      await passkeyAutofill();
+    } catch (response) {
+      const message = (response as FetchError).message || t("errors.unknown");
+      error.value = message;
+    } finally {
+      loading.value = false;
+    }
+  }
+});
+
+const error = ref<string | undefined>();
+
+const router = useRouter();
+const route = useRoute();
+const { t } = useI18n();
+
+async function signin_wrapper() {
+  loading.value = true;
+  try {
+    await signin();
+  } catch (e) {
+    if (e instanceof FetchError) {
+      error.value = e.data.message || t("errors.unknown");
+    } else {
+      error.value = e as string;
+    }
+  } finally {
+    loading.value = false;
+  }
+}
+
+async function signin() {
+  const { result } = await $dropFetch("/api/v1/auth/signin/simple", {
+    method: "POST",
+    body: {
+      username: username.value,
+      password: password.value,
+      rememberMe: rememberMe.value,
+    },
+  });
+  if (result == "2fa") {
+    router.push({ query: route.query, path: "/auth/mfa" });
+    return;
+  }
+
+  await completeSignin();
+}
+</script>

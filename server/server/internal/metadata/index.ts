@@ -1,0 +1,377 @@
+import type { Prisma } from "~/prisma/client/client";
+import type { GameType } from "~/prisma/client/enums";
+import { MetadataSource } from "~/prisma/client/enums";
+import prisma from "../db/database";
+import type {
+  _FetchGameMetadataParams,
+  _FetchCompanyMetadataParams,
+  GameMetadata,
+  GameMetadataSearchResult,
+  InternalGameMetadataResult,
+  CompanyMetadata,
+  GameMetadataRating,
+} from "./types";
+import { ObjectTransactionalHandler } from "../objects/transactional";
+import { PriorityListIndexed } from "../utils/prioritylist";
+import { systemConfig } from "../config/sys-conf";
+import type { TaskRunContext } from "../tasks";
+import taskHandler, { wrapTaskContext } from "../tasks";
+import { randomUUID } from "crypto";
+import { fuzzy } from "fast-fuzzy";
+import { logger } from "~/server/internal/logging";
+import { createGameImportTaskId } from "../library";
+import type { GameTagModel } from "~/prisma/client/models";
+
+export class MissingMetadataProviderConfig extends Error {
+  private providerName: string;
+
+  constructor(configKey: string, providerName: string) {
+    super(`Missing config item ${configKey} for ${providerName}`);
+    this.providerName = providerName;
+  }
+
+  getProviderName() {
+    return this.providerName;
+  }
+}
+
+// TODO: add useragent to all outbound api calls (best practice)
+export const DropUserAgent = `Drop/${systemConfig.getDropVersion()}`;
+
+export abstract class MetadataProvider {
+  abstract name(): string;
+  abstract source(): MetadataSource;
+
+  abstract search(query: string): Promise<GameMetadataSearchResult[]>;
+  abstract fetchGame(
+    params: _FetchGameMetadataParams,
+    taskRunContext?: TaskRunContext,
+  ): Promise<GameMetadata>;
+  abstract fetchCompany(
+    params: _FetchCompanyMetadataParams,
+    taskRunContext?: TaskRunContext,
+  ): Promise<CompanyMetadata | undefined>;
+}
+
+export class MetadataHandler {
+  // Ordered by priority
+  private providers: PriorityListIndexed<MetadataProvider> =
+    new PriorityListIndexed("source");
+  private objectHandler: ObjectTransactionalHandler =
+    new ObjectTransactionalHandler();
+
+  addProvider(provider: MetadataProvider, priority: number = 0) {
+    this.providers.push(provider, priority);
+  }
+
+  /**
+   * Returns provider IDs, used to save to applicationConfig
+   * @returns The provider IDs in order, missing manual
+   */
+  fetchProviderIdsInOrder() {
+    return this.providers
+      .values()
+      .map((e) => e.source())
+      .filter((e) => e !== "Manual");
+  }
+
+  async search(query: string) {
+    const promises: Promise<InternalGameMetadataResult[]>[] = [];
+    for (const provider of this.providers.values()) {
+      const queryTransformationPromise = new Promise<
+        InternalGameMetadataResult[]
+        // TODO: fix eslint error
+        // eslint-disable-next-line no-async-promise-executor
+      >(async (resolve, reject) => {
+        setTimeout(
+          () => reject(new Error("Timeout while fetching results")),
+          systemConfig.getMetadataTimeout(),
+        );
+        try {
+          const results = await provider.search(query);
+          const mappedResults: InternalGameMetadataResult[] = results.map(
+            (result) =>
+              Object.assign({}, result, {
+                sourceId: provider.source(),
+                sourceName: provider.name(),
+              }),
+          );
+          resolve(mappedResults);
+        } catch (e) {
+          logger.warn(e);
+          reject(e);
+        }
+      });
+      promises.push(queryTransformationPromise);
+    }
+
+    const results = await Promise.allSettled(promises);
+    const successfulResults = results
+      .filter((result) => result.status === "fulfilled")
+      .map((result) => result.value)
+      .flat()
+      .map((result) => {
+        const match = fuzzy(query, result.name);
+        return { ...result, fuzzy: match };
+      })
+      .sort((a, b) => b.fuzzy - a.fuzzy);
+
+    return successfulResults;
+  }
+
+  async createGameWithoutMetadata(
+    libraryId: string,
+    libraryPath: string,
+    type: GameType,
+  ) {
+    return await this.createGame(
+      {
+        id: "",
+        name: libraryPath,
+        sourceId: MetadataSource.Manual,
+      },
+      libraryId,
+      libraryPath,
+      type,
+    );
+  }
+
+  private async parseTags(tags: string[]) {
+    const results: Array<GameTagModel> = [];
+
+    for (const tag of tags) {
+      const rawResults: GameTagModel[] =
+        await prisma.$queryRaw`SELECT * FROM "GameTag" WHERE SIMILARITY(name, ${tag}) > 0.45;`;
+      let resultTag = rawResults.at(0);
+      if (!resultTag) {
+        resultTag = await prisma.gameTag.create({
+          data: {
+            name: tag,
+          },
+        });
+      }
+      results.push(resultTag);
+    }
+
+    return results;
+  }
+
+  private parseRatings(ratings: GameMetadataRating[]) {
+    const results: Array<Prisma.GameRatingCreateOrConnectWithoutGameInput> = [];
+
+    ratings.forEach((r) => {
+      results.push({
+        where: {
+          metadataKey: {
+            metadataId: r.metadataId,
+            metadataSource: r.metadataSource,
+          },
+        },
+        create: {
+          ...r,
+        },
+      });
+    });
+
+    return results;
+  }
+
+  async createGame(
+    result: { sourceId: string; id: string; name: string },
+    libraryId: string,
+    libraryPath: string,
+    type: GameType,
+  ) {
+    const provider = this.providers.get(result.sourceId);
+    if (!provider)
+      throw new Error(`Invalid metadata provider for ID "${result.sourceId}"`);
+
+    const existing = await prisma.game.findUnique({
+      where: {
+        metadataKey: {
+          metadataSource: provider.source(),
+          metadataId: result.id,
+        },
+      },
+    });
+    if (existing) return undefined;
+
+    const gameId = randomUUID();
+
+    const key = createGameImportTaskId(libraryId, libraryPath);
+    return await taskHandler.create({
+      name: `Import game "${result.name}" (${libraryPath})`,
+      key,
+      taskGroup: "import:game",
+      acls: ["system:import:game:read"],
+      async run(context) {
+        const { progress, logger } = context;
+
+        progress(0);
+
+        const [createObject, pullObjects, dumpObjects] =
+          metadataHandler.objectHandler.new(
+            {},
+            ["internal:read"],
+            wrapTaskContext(context, {
+              min: 60,
+              max: 95,
+              prefix: "[object import] ",
+            }),
+          );
+
+        const companyLookupCache: {
+          [key: string]: Awaited<
+            ReturnType<typeof metadataHandler.fetchCompany>
+          >;
+        } = {};
+        let metadata: GameMetadata | undefined = undefined;
+        try {
+          metadata = await provider.fetchGame(
+            {
+              id: result.id,
+              name: result.name,
+              // wrap in anonymous functions to keep references to this
+              company: async (name: string) => {
+                if (companyLookupCache[name]) return companyLookupCache[name];
+
+                const companyData = await metadataHandler.fetchCompany(name);
+                companyLookupCache[name] = companyData;
+                return companyData;
+              },
+              createObject,
+            },
+            wrapTaskContext(context, {
+              min: 0,
+              max: 60,
+              prefix: "[metadata import] ",
+            }),
+          );
+        } catch (e) {
+          dumpObjects();
+          throw e;
+        }
+
+        context?.progress(60);
+
+        logger.info(`Successfully fetched all metadata.`);
+        logger.info(`Importing objects...`);
+
+        await pullObjects();
+
+        progress(95);
+
+        await prisma.game.create({
+          data: {
+            id: gameId,
+            metadataSource: provider.source(),
+            metadataId: metadata.id,
+
+            mName: metadata.name,
+            mShortDescription: metadata.shortDescription,
+            mDescription: metadata.description,
+            mReleased: metadata.released,
+
+            mIconObjectId: metadata.icon,
+            mBannerObjectId: metadata.bannerId,
+            mCoverObjectId: metadata.coverId,
+            mImageLibraryObjectIds: metadata.images,
+
+            publishers: {
+              connect: metadata.publishers,
+            },
+            developers: {
+              connect: metadata.developers,
+            },
+
+            ratings: {
+              connectOrCreate: metadataHandler.parseRatings(metadata.reviews),
+            },
+            tags: {
+              connect: await metadataHandler.parseTags(metadata.tags),
+            },
+
+            libraryId,
+            libraryPath,
+
+            type,
+          },
+        });
+
+        logger.info(`Finished game import.`);
+        progress(100);
+
+        context.addAction(`View Game:/admin/library/${gameId}`);
+      },
+    });
+  }
+
+  // Careful with this function, it has no typechecking
+  // Type-checking this thing is impossible
+  private async fetchCompany(query: string) {
+    const existing = await prisma.company.findFirst({
+      where: {
+        metadataOriginalQuery: query,
+      },
+    });
+    if (existing) return existing;
+
+    for (const provider of this.providers.values()) {
+      // don't allow manual provider to "fetch" metadata
+      if (provider.source() === MetadataSource.Manual) continue;
+
+      const [createObject, pullObjects, dumpObjects] = this.objectHandler.new(
+        {},
+        ["internal:read"],
+      );
+      let result: CompanyMetadata | undefined;
+      try {
+        result = await provider.fetchCompany({ query, createObject });
+        if (result === undefined) {
+          throw new Error(
+            `${provider.source()} failed to find a company for "${query}"`,
+          );
+        }
+      } catch (e) {
+        logger.warn(e);
+        dumpObjects();
+        continue;
+      }
+
+      const object = await prisma.company.upsert({
+        where: {
+          metadataKey: {
+            metadataSource: provider.source(),
+            metadataId: result.id,
+          },
+        },
+        create: {
+          metadataSource: provider.source(),
+          metadataId: result.id,
+          metadataOriginalQuery: query,
+
+          mName: result.name,
+          mShortDescription: result.shortDescription,
+          mDescription: result.description,
+          mLogoObjectId: result.logo,
+          mBannerObjectId: result.banner,
+          mWebsite: result.website,
+        },
+        update: {},
+      });
+
+      if (object.mLogoObjectId == result.logo) {
+        // We created, and didn't update
+        // So pull objects
+        await pullObjects();
+      }
+
+      return object;
+    }
+
+    return undefined;
+  }
+}
+
+export const metadataHandler = new MetadataHandler();
+export default metadataHandler;
