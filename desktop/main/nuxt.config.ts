@@ -14,7 +14,7 @@ export default defineNuxtConfig({
   ssr: false,
   devtools: false,
 
-  extends: [["../../base"]],
+  extends: [["../../libraries/base"]],
 
   app: {
     baseURL: "/main",

@@ -36,7 +36,7 @@ console.log(`Drop ${dropVersion} #${commitHash}`);
 
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
-  extends: ["../base"],
+  extends: ["../libraries/base"],
   // Module config from here down
 
   modules: [
