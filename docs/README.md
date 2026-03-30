@@ -1,3 +1,3 @@
-# Drop Docs Next
+# Docs
 
-The in-progress documentation for v0.4.0
+The docs for Drop.

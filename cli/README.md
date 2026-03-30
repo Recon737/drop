@@ -1,2 +1,3 @@
-# downpour
-A cli tool to upload local files to Drop's depot infrastructure. 
+# CLI (`downpour`)
+
+The cli way to access Drop. Used for admin tasks that require local access, like uploading game content.
