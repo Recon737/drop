@@ -5,10 +5,11 @@ use std::{
 
 use anyhow::Result;
 
-use crate::versions::{
-    archive_backend::ZipVersionBackend, path_backend::PathVersionBackend, types::VersionBackend,
-};
+use crate::versions::{path_backend::PathVersionBackend, types::VersionBackend};
 
+use crate::versions::archive_backend::ZipVersionBackend;
+
+// libarchive backend is Linux-only for now
 pub mod archive_backend;
 pub mod path_backend;
 
@@ -33,10 +34,13 @@ const SUPPORTED_FILE_EXTENSIONS: [&str; 11] = [
 ];
 
 pub mod types;
-#[allow(clippy::type_complexity)]
-pub fn create_backend_constructor<'a>(
-    path: &Path,
-) -> Option<Box<dyn FnOnce() -> Result<Box<dyn VersionBackend + Send + Sync + 'a>>>> {
+pub fn create_backend_constructor<'a, P>(
+    path: P,
+) -> Option<Box<dyn FnOnce() -> Result<Box<dyn VersionBackend + Send + Sync + 'a>>>>
+where
+    P: AsRef<Path>,
+{
+    let path = path.as_ref();
     if !path.exists() {
         return None;
     }
@@ -49,8 +53,7 @@ pub fn create_backend_constructor<'a>(
         }));
     };
 
-    let file_extension = path.extension().and_then(|v| v.to_str())?;
-
+    let file_extension = path.extension().map(|v| v.to_str()).flatten()?;
     if SUPPORTED_FILE_EXTENSIONS.contains(&file_extension) {
         let buf = path.to_path_buf();
         return Some(Box::new(move || Ok(Box::new(ZipVersionBackend::new(buf)?))));

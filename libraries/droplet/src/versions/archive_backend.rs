@@ -28,12 +28,12 @@ impl ZipVersionBackend {
     }
 }
 
-struct ArchiveReader<'a> {
+struct ArchiveReader {
     archive: FileReader,
-    prev_block: Option<&'a [u8]>,
+    prev_block: Option<Vec<u8>>,
 }
 
-impl<'a> AsyncRead for ArchiveReader<'a> {
+impl AsyncRead for ArchiveReader {
     fn poll_read(
         mut self: std::pin::Pin<&mut Self>,
         _cx: &mut std::task::Context<'_>,
@@ -41,9 +41,8 @@ impl<'a> AsyncRead for ArchiveReader<'a> {
     ) -> std::task::Poll<std::io::Result<()>> {
         if let Some(block) = &mut self.prev_block {
             let to_read = buf.remaining().min(block.len());
-            let result = block.split_off(..to_read);
-            let result = result.unwrap(); // SAFETY: above .min statement
-            buf.put_slice(result);
+            let result = block.split_off(to_read);
+            buf.put_slice(&result);
 
             // If the block is empty, we can read more
             if block.is_empty() {
@@ -52,27 +51,31 @@ impl<'a> AsyncRead for ArchiveReader<'a> {
                 return Poll::Ready(Ok(()));
             }
         }
-        let block = match self.archive.read_block() {
-            Ok(v) => v,
-            Err(err) => return Poll::Ready(Err(std::io::Error::other(err.to_string()))),
-        };
+        let prev_block_update = {
+            let block = match self.archive.read_block() {
+                Ok(v) => v,
+                Err(err) => return Poll::Ready(Err(std::io::Error::other(err.to_string()))),
+            };
 
-        let mut block = match block {
-            Some(v) => v,
-            None => return Poll::Ready(Ok(())),
-        };
+            let mut block = match block {
+                Some(v) => v,
+                None => return Poll::Ready(Ok(())),
+            };
 
-        let write_amount = buf.remaining().min(block.len());
-        let to_write = block.split_off(..write_amount);
-        let to_write = to_write.unwrap(); // SAFETY: above .min statement
-        buf.put_slice(to_write);
+            let write_amount = buf.remaining().min(block.len());
+            let to_write = block.split_off(..write_amount);
+            let to_write = to_write.unwrap(); // SAFETY: above .min statement
+            buf.put_slice(to_write);
 
-        if !block.is_empty() {
-            #[cfg(debug_assertions)]
-            if self.prev_block.is_some() {
-                panic!("replacing prev_block while it contains data")
+            if !block.is_empty() {
+                Some(block[buf.remaining()..].to_vec())
+            } else {
+                None
             }
-            self.prev_block.replace(&block[buf.remaining()..]);
+        };
+
+        if let Some(prev_block) = prev_block_update {
+            self.prev_block.replace(prev_block);
         }
 
         Poll::Ready(Ok(()))
