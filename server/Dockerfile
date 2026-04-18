@@ -69,7 +69,7 @@ COPY --from=torrential-build /build/target/release/torrential /usr/bin/
 ENV LIBRARY="/library"
 ENV DATA="/data"
 ENV NGINX_CONFIG="/nginx.conf"
-# NGINX's port
+# Nuxt's port
 ENV PORT=4000
 
 CMD ["sh", "/app/startup/launch.sh"]
