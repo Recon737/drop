@@ -63,6 +63,14 @@ FROM base AS run-system
 ENV NODE_ENV=production
 ENV NUXT_TELEMETRY_DISABLED=1
 
+# The base stage's `COPY . .` puts the whole repo into the runtime WORKDIR (/app),
+# but at runtime only the artifacts copied explicitly below are needed. Drop the
+# inherited `torrential` source dir: the service resolves the binary by scanning
+# the cwd for `torrential`, and a directory there is spawned as ./torrential and
+# fails with EACCES. With it gone, resolution falls through to the `torrential`
+# binary installed on PATH (/usr/bin/torrential) below.
+RUN rm -rf /app/torrential
+
 # RUN --mount=type=cache,target=/root/.yarn YARN_CACHE_FOLDER=/root/.yarn yarn add --network-timeout 1000000 --no-lockfile --ignore-scripts prisma@6.11.1
 ## runtime deps:
 ##  - libarchive13: torrential now links libarchive dynamically (glibc build)
@@ -77,7 +85,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     openssl \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*
-RUN pnpm install prisma@7.3.0 --global
+RUN pnpm install prisma@7.7.0 --global
 # init prisma to download all required files
 RUN pnpm prisma init
 
